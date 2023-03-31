@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 from pathlib import Path
+from . import update_references
 import boto3
 import argparse
-from update_references import process_template
+
 
 s3_client = boto3.client('s3')
 

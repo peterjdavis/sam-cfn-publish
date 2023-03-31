@@ -1,0 +1,30 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  Parameter1:
+    Type: String
+    Default: Test
+
+Resources:
+  SampleLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: SampleLayer
+      ContentUri: src/layer/SampleLayer
+      CompatibleRuntimes:
+        - python3.9
+    Metadata:
+      BuildMethod: python3.9
+
+  NoVPCEndPointTestFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      InlineSAMFunction: true
+    Properties:
+      CodeUri: src/lambda/testFunction
+      Handler: index.lambda_handler
+      Runtime: python3.9
+      Layers:
+        - !Ref SampleLayer
