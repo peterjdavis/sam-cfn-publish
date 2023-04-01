@@ -53,16 +53,17 @@ def get_lambda_source(path, handler, spaces, working_folder):
 
 def get_code(source_bucket, source_key, spaces, working_folder, target_asset_folder, lambda_folder, s3_client):
     filename = get_filename_from_path(source_key)
-    LOG.info('Source Bucket: %s', source_bucket)
-    LOG.info('Source Key: %s', source_key)
-    LOG.info('target_asset_folder: %s', target_asset_folder)
-    LOG.info('lambda_folder: %s', lambda_folder)
-    LOG.info('filename: %s', filename)
+    # LOG.info('Source Bucket: %s', source_bucket)
+    # LOG.info('Source Key: %s', source_key)
+    # LOG.info('target_asset_folder: %s', target_asset_folder)
+    # LOG.info('lambda_folder: %s', lambda_folder)
+    # LOG.info('filename: %s', filename)
 
+    local_zip_file = f'{working_folder}/{filename}'
     s3_client.download_file(
-        source_bucket, source_key, target_asset_folder + lambda_folder + filename)
+        source_bucket, source_key, local_zip_file)
 
-    return get_lambda_source(target_asset_folder + lambda_folder + filename, 'index.lambda_handler', spaces, working_folder)
+    return get_lambda_source(local_zip_file, 'index.lambda_handler', spaces, working_folder)
 
 def count_spaces(line):
     spaces = 0
