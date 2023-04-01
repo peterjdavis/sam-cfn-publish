@@ -39,7 +39,7 @@ def process_layer(cfn, key, value, target_assets_bucket, target_prefix, target_a
     value['Properties']['Content']['S3Bucket'] = {
         'Ref': target_assets_bucket}
     value['Properties']['Content']['S3Key'] = {
-        'Fn::Sub': f'{target_prefix}/{layer_path}/{source_key}'}
+        'Fn::Sub': f'{target_prefix}/{layer_path}/{source_key}'.strip('/')}
 
 def process_statemachine(cfn, key, value, target_assets_bucket, target_prefix, target_asset_folder, statemachine_path, s3_client):
     print('Processing Satemachine: %s', key)
