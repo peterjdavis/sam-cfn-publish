@@ -12,16 +12,15 @@ def process_lambda(cfn, key, value, target_assets_bucket, target_prefix, target_
                 cfn, value['Properties']['Code']['S3Bucket'])
             source_key = resolve_element(
                 cfn, value['Properties']['Code']['S3Key'])
-            target_path = f'{target_asset_folder}/{lambda_path}/'
-            check_create_folder(target_path)
+            target_local_path = f'{target_asset_folder}/{lambda_path}'
+            check_create_folder(target_local_path)
             filename = get_filename_from_path(source_key)
-            # handler = value['Properties']['Handler']
             s3_client.download_file(
-                source_bucket, source_key, target_path + filename)
+                source_bucket, source_key, f'{target_local_path}/{filename}')
             value['Properties']['Code']['S3Bucket'] = {
                 'Ref': target_assets_bucket}
             value['Properties']['Code']['S3Key'] = {
-                'Fn::Sub': target_prefix + target_path + source_key}
+                'Fn::Sub': f'{target_prefix}/{lambda_path}/{source_key}'.strip('/')}
     else:
         print(f'Code is not referenced from an S3 Bucket')
 
@@ -47,14 +46,14 @@ def process_statemachine(cfn, key, value, target_assets_bucket, target_prefix, t
         cfn, value['Properties']['DefinitionS3Location']['Bucket'])
     source_key = resolve_element(
         cfn, value['Properties']['DefinitionS3Location']['Key'])
-    target_sub_path = f'{target_asset_folder}/{statemachine_path}/'
+    target_local_path = f'{target_asset_folder}/{statemachine_path}/'
     filename = get_filename_from_path(source_key)
     s3_client.download_file(
-        source_bucket, source_key, target_asset_folder + target_sub_path + filename)
+        source_bucket, source_key, f'{target_local_path}/{filename}')
     value['Properties']['DefinitionS3Location']['Bucket'] = {
         'Ref': target_assets_bucket}
     value['Properties']['DefinitionS3Location']['Key'] = {
-        'Fn::Sub': target_prefix + target_sub_path + source_key}
+        'Fn::Sub': f'{target_prefix}/{statemachine_path}/{source_key}'.strip('/')}
 
 def move_assets(cfn_input_template, cfn_output_template, target_assets_bucket, target_prefix, target_asset_folder, lambda_path, layer_path, statemachine_path, s3_client):
     with open(cfn_input_template) as f:

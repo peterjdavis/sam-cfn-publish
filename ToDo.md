@@ -1,5 +1,6 @@
 # To Do
 - Move_assets need update lambdas and statemachines to be similar to layer file handling
+  - Done but need to test (maybe with EE setup)
 - Look at the parameter handling function
 - Go through and make sure string formatting is consistent
 - Update packaging to be a toml file 
