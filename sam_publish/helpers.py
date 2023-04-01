@@ -48,7 +48,7 @@ def get_lambda_source(path, handler, spaces, working_folder):
         function_content += '\n'
     return function_content
 
-def get_code(source_bucket, source_key, spaces, working_folder, target_asset_folder, lambda_folder, s3_client):
+def get_code(source_bucket, source_key, spaces, working_folder, s3_client):
     filename = get_filename_from_path(source_key)
     local_zip_file = f'{working_folder}/{filename}'
     s3_client.download_file(
