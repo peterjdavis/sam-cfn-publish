@@ -14,7 +14,8 @@
             "--cfn-input-template=.tmp/cfn2-template.tmp.json", 
             "--cfn-output-template=samples/cfn-template.yaml", 
             "--target-asset-folder=samples/assets/cfn",
-            "--target-asset-bucket=assets-270208939515-eu-west-2"
+            "--target-asset-bucket=AssetBucket",
+            "--move-assets"
         }
     ]
 }

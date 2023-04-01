@@ -3,7 +3,10 @@
 from pathlib import Path
 import argparse
 import boto3
-from . import update_references
+from .move_assets import move_assets
+import logging
+
+LOG = logging.getLogger(__name__)
 
 s3_client = boto3.client('s3')
 
@@ -34,6 +37,13 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--lambda_folder",
+    help="Location the lambda assets should be stored [default: Lambda].",
+    type=Path,
+    default=Path("Lambda"),
+)
+
+parser.add_argument(
     "--layer_folder",
     help="Location the layer assets should be stored [default: Layer].",
     type=Path,
@@ -52,10 +62,43 @@ parser.add_argument(
     help="Bucket the assets should be stored [default: ./Assets/].",
 )
 
+parser.add_argument(
+    "--target-prefix",
+    help="Prefix of the asset folders that items should be stored in [default: ''].",
+    default='',
+)
+
+parser.add_argument(
+    "--move-assets",
+    help="Should references to the assets be moved to a different bucket",
+    action="store_true",
+    default=False,
+)
+
+parser.add_argument(
+    "--debug",
+    help="Enables debug logging",
+    action="store_true",
+)
+
+parser.add_argument(
+    "--verbose",
+    help="Enables verbose logging",
+    action="store_true",
+)
+
 cli_options, cli_cfn_parameters = parser.parse_known_args()
 
+if cli_options.debug:
+    logging.basicConfig(level=logging.DEBUG)
+elif cli_options.verbose:
+    logging.basicConfig(level=logging.INFO)
+else:
+    logging.basicConfig()
+
 def main():
-    update_references.process_template(CFN_INPUT_TEMPLATE, CFN_OUTPUT_TEMPLATE, TARGET_ASSET_FOLDER, LAYER_FOLDER, STATEMACHINE_FOLDER, s3_client)
+    if cli_options.move_assets:
+        move_assets(CFN_INPUT_TEMPLATE, CFN_OUTPUT_TEMPLATE, TARGET_ASSET_BUCKET, TARGET_PREFIX, TARGET_ASSET_FOLDER, LAMBDA_FOLDER, LAYER_FOLDER, STATEMACHINE_FOLDER, s3_client)
 
 if __name__ == "__main__":
     print("Running Script")
@@ -63,9 +106,11 @@ if __name__ == "__main__":
     CFN_INPUT_TEMPLATE = str(cli_options.cfn_input_template)
     CFN_OUTPUT_TEMPLATE = str(cli_options.cfn_output_template)
     TARGET_ASSET_FOLDER = str(cli_options.target_asset_folder)
+    LAMBDA_FOLDER = str(cli_options.lambda_folder)
     LAYER_FOLDER = str(cli_options.layer_folder)
     STATEMACHINE_FOLDER = str(cli_options.statemachine_folder)
     TARGET_ASSET_BUCKET = str(cli_options.target_asset_bucket)
+    TARGET_PREFIX = str(cli_options.target_prefix)
 
     cfn_parameters = {}
     for cli_cfn_parameter in cli_cfn_parameters:

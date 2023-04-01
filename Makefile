@@ -43,4 +43,6 @@ test :
     	--cfn-input-template ${tmpCFNDir}/cfn2-template.tmp.json \
     	--cfn-output-template samples/cfn-template.yaml \
     	--target-asset-folder samples/assets/cfn \
-		--target-asset-bucket assets-${awsAccount}-${awsRegion} 
+		--target-asset-bucket AssetBucket \
+		--move-assets \
+		--verbose
