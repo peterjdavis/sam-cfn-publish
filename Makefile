@@ -36,7 +36,7 @@ test :
 
 	python3 -m sam_publish \
 		--working_folder ${tmpCFNDir} \
-    	--cfn-input-template ${tmpCFNDir}/cfn2-template.tmp.json \
+    	--cfn-input-template ${tmpCFNDir}/cfn1-template.tmp.yaml \
     	--cfn-output-template samples/cfn-template.yaml \
     	--target-asset-folder samples/assets/cfn \
 		--target-asset-bucket AssetBucket \

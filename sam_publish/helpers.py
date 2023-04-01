@@ -1,4 +1,6 @@
 import os
+from os.path import basename
+import shutil
 
 def get_cfn_parameter(search_item) -> any:
     for cfn_parameter in cfn_parameters:
@@ -25,9 +27,39 @@ def resolve_element(cfn, element):
         return element
 
 def get_filename_from_path(path):
-    path_parts = path.split('/')
-    return path_parts[len(path_parts) - 1]
+    # path_parts = path.split('/')
+    # return path_parts[len(path_parts) - 1]
+    return basename(path)
 
 def check_create_folder(path):
     if not os.path.exists(path):
         os.makedirs(path) 
+
+def get_lambda_source(path, handler, spaces, working_folder):
+    shutil.unpack_archive(path, working_folder, 'zip')
+    handler_prefix = handler.split('.')[0]
+    lambda_source_file = working_folder + '/' + handler_prefix + '.py'
+    # os.remove(path)
+    function_content = ''
+
+    with open(lambda_source_file, mode='r') as f:
+        for line in f:
+            function_content += ' ' * spaces + line
+        function_content += '\n'
+    return function_content
+
+def get_code(source_bucket, source_key, spaces, working_folder, target_asset_folder, lambda_folder, s3_client):
+    filename = get_filename_from_path(source_key)
+    s3_client.download_file(
+        source_bucket, source_key, target_asset_folder + lambda_folder + filename)
+
+    return get_lambda_source(target_asset_folder + lambda_folder + filename, 'index.lambda_handler', spaces, working_folder)
+
+def count_spaces(line):
+    spaces = 0
+    for character in line:
+        if character == ' ':
+            spaces += 1
+        else:
+            break
+    return spaces

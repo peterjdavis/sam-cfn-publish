@@ -11,11 +11,12 @@
             "module": "sam_publish",
             "justMyCode": true,
             "args": ["--working_folder=.tmp",
-            "--cfn-input-template=.tmp/cfn2-template.tmp.json", 
+            "--cfn-input-template=.tmp/cfn1-template.tmp.yaml", 
             "--cfn-output-template=samples/cfn-template.yaml", 
             "--target-asset-folder=samples/assets/cfn",
             "--target-asset-bucket=AssetBucket",
-            "--move-assets"
+            "--move-assets",
+            "--verbose"
         }
     ]
 }

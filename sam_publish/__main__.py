@@ -8,6 +8,7 @@ import logging
 
 import boto3
 from .move_assets import move_assets, convert_to_yaml
+from .inline_functions import inline_lambda_functions
 from .sam_translate import transform_template
 from .helpers import check_create_folder
 
@@ -108,11 +109,14 @@ def main():
     
     input_template = output_template
     output_template = WORKING_FOLDER + '/temp_template_2.yaml'
-
     if cli_options.move_assets:
         move_assets(input_template, output_template, TARGET_ASSET_BUCKET, TARGET_PREFIX, TARGET_ASSET_FOLDER, LAMBDA_FOLDER, LAYER_FOLDER, STATEMACHINE_FOLDER, s3_client)
     else:
         convert_to_yaml(input_template, output_template)
+
+    input_template = output_template
+    output_template = WORKING_FOLDER + '/temp_template_3.yaml'
+    inline_lambda_functions(input_template, output_template, WORKING_FOLDER, TARGET_ASSET_FOLDER, LAMBDA_FOLDER, s3_client)
 
     check_create_folder(dirname(CFN_OUTPUT_TEMPLATE))
     os.replace(output_template, CFN_OUTPUT_TEMPLATE)
