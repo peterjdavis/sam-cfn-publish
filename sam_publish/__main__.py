@@ -3,12 +3,13 @@
 from pathlib import Path
 import argparse
 import os
+from os.path import dirname
 import logging
 
 import boto3
 from .move_assets import move_assets, convert_to_yaml
 from .sam_translate import transform_template
-
+from .helpers import check_create_folder
 
 LOG = logging.getLogger(__name__)
 
@@ -112,7 +113,8 @@ def main():
         move_assets(input_template, output_template, TARGET_ASSET_BUCKET, TARGET_PREFIX, TARGET_ASSET_FOLDER, LAMBDA_FOLDER, LAYER_FOLDER, STATEMACHINE_FOLDER, s3_client)
     else:
         convert_to_yaml(input_template, output_template)
-    
+
+    check_create_folder(dirname(CFN_OUTPUT_TEMPLATE))
     os.replace(output_template, CFN_OUTPUT_TEMPLATE)
 
 if __name__ == "__main__":
