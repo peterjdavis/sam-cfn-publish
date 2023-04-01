@@ -2,8 +2,10 @@
 
 from pathlib import Path
 import argparse
+import os
 import boto3
 from .move_assets import move_assets
+from .sam_translate import transform_template
 import logging
 
 LOG = logging.getLogger(__name__)
@@ -97,8 +99,15 @@ else:
     logging.basicConfig()
 
 def main():
+    input_template = CFN_INPUT_TEMPLATE
+    output_template = WORKING_FOLDER + '/temp_template_1.json'
+    transform_template(input_template, output_template)
     if cli_options.move_assets:
-        move_assets(CFN_INPUT_TEMPLATE, CFN_OUTPUT_TEMPLATE, TARGET_ASSET_BUCKET, TARGET_PREFIX, TARGET_ASSET_FOLDER, LAMBDA_FOLDER, LAYER_FOLDER, STATEMACHINE_FOLDER, s3_client)
+        input_template = output_template
+        output_template = WORKING_FOLDER + '/temp_template_2.yaml'
+        move_assets(input_template, output_template, TARGET_ASSET_BUCKET, TARGET_PREFIX, TARGET_ASSET_FOLDER, LAMBDA_FOLDER, LAYER_FOLDER, STATEMACHINE_FOLDER, s3_client)
+
+    os.replace(output_template, CFN_OUTPUT_TEMPLATE)
 
 if __name__ == "__main__":
     print("Running Script")
