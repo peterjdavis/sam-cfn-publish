@@ -31,16 +31,16 @@ def process_layer(cfn, key, value, target_assets_bucket, target_prefix, target_a
         cfn, value['Properties']['Content']['S3Bucket'])
     source_key = resolve_element(
         cfn, value['Properties']['Content']['S3Key'])
-    target_path = f'/{layer_path}/'
-    target_local_path = f'{target_asset_folder}/{layer_path}/'
+    target_path = f'/{layer_path}'
+    target_local_path = f'{target_asset_folder}/{layer_path}'
     check_create_folder(target_local_path)
     filename = get_filename_from_path(source_key)
     s3_client.download_file(
-        source_bucket, source_key, target_path + filename)
+        source_bucket, source_key, f'{target_local_path}/{filename}')
     value['Properties']['Content']['S3Bucket'] = {
         'Ref': target_assets_bucket}
     value['Properties']['Content']['S3Key'] = {
-        'Fn::Sub':  target_prefix + target_path + source_key}
+        'Fn::Sub': target_prefix + target_path + source_key}
 
 def process_statemachine(cfn, key, value, target_assets_bucket, target_prefix, target_asset_folder, statemachine_path, s3_client):
     print('Processing Satemachine: %s', key)
