@@ -3,6 +3,7 @@
   - Done but need to test (maybe with EE setup)
 - Look at the parameter handling function
 - Go through and make sure string formatting is consistent
+  - Done but need to test
 - Update packaging to be a toml file 
 - Test with EE deployment
 - Create a proper readme
