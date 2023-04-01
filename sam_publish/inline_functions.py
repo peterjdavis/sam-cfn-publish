@@ -77,3 +77,6 @@ def inline_lambda_functions(cfn_input_template, cfn_output_template, working_fol
                         source_bucket = ''
                         source_key = ''
                         handler = ''
+
+                else:
+                    wf.writelines(line)
