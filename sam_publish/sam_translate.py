@@ -23,7 +23,7 @@ def transform_template(input_file_path, output_file_path):  # type: ignore[no-un
         with open(output_file_path, "w") as f:
             f.write(cloud_formation_template_prettified)
 
-        print("Wrote transformed CloudFormation template to: " + output_file_path)
+        LOG.debug("Wrote transformed CloudFormation template to: " + output_file_path)
     except InvalidDocumentException as e:
         error_message = reduce(lambda message, error: message + " " + error.message, e.causes, e.message)
         LOG.error(error_message)
