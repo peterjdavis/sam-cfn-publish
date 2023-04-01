@@ -4,8 +4,8 @@ from pathlib import Path
 import argparse
 import os
 import boto3
-from .move_assets import move_assets
-from .sam_translate import transform_template, convert_to_yaml
+from .move_assets import move_assets, convert_to_yaml
+from .sam_translate import transform_template
 import logging
 
 LOG = logging.getLogger(__name__)
