@@ -3,6 +3,7 @@
 - Look at the parameter handling function
 - Go through and make sure string formatting is consistent
 - Update packaging to be a toml file 
+- Test with EE deployment
 - Create a proper readme
 - Publish to PyPi
 - Write a blog post
