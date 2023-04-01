@@ -31,8 +31,9 @@ def process_layer(cfn, key, value, target_assets_bucket, target_prefix, target_a
         cfn, value['Properties']['Content']['S3Bucket'])
     source_key = resolve_element(
         cfn, value['Properties']['Content']['S3Key'])
-    target_path = f'{target_asset_folder}/{layer_path}/'
-    check_create_folder(target_path)
+    target_path = f'/{layer_path}/'
+    target_local_path = f'{target_asset_folder}/{layer_path}/'
+    check_create_folder(target_local_path)
     filename = get_filename_from_path(source_key)
     s3_client.download_file(
         source_bucket, source_key, target_path + filename)
