@@ -24,6 +24,7 @@ def process_lambda(cfn, key, value, target_assets_bucket, target_prefix, target_
                 'Fn::Sub': target_prefix + target_path + source_key}
     else:
         print(f'Code is not referenced from an S3 Bucket')
+
 def process_layer(cfn, key, value, target_assets_bucket, target_prefix, target_asset_folder, layer_path, s3_client):
     LOG.info('Processing Layer: %s', key)
     source_bucket = resolve_element(
@@ -70,5 +71,16 @@ def move_assets(cfn_input_template, cfn_output_template, target_assets_bucket, t
             elif value["Type"] == "AWS::StepFunctions::StateMachine":
                 process_statemachine(cfn, key, value, target_assets_bucket, target_prefix, target_asset_folder, statemachine_path, s3_client)
 
+    write_yaml_file(cfn, cfn_output_template)
+
+def write_yaml_file(cfn, cfn_output_template):
     with open(cfn_output_template, 'w') as f:
         f.write(to_yaml(dump_yaml(cfn), clean_up=True))
+
+def convert_to_yaml(cfn_input_template, cfn_output_template):
+    with open(cfn_input_template) as f:
+        str_cfn = f.read()
+
+        cfn = load_json(str_cfn)
+
+        write_yaml_file(cfn, cfn_output_template)

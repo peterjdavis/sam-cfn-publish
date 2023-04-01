@@ -33,10 +33,6 @@ test :
 		fi
 
 	sam package -t samples/sam-template.yaml --output-template-file ${tmpCFNDir}/cfn1-template.tmp.yaml --s3-bucket sam-${awsAccount}-${awsRegion}
-	
-	python3 sam_publish/sam-translate.py \
-		--template-file=${tmpCFNDir}/cfn1-template.tmp.yaml \
-		--output-template=${tmpCFNDir}/cfn2-template.tmp.json
 
 	python3 -m sam_publish \
 		--working_folder ${tmpCFNDir} \
