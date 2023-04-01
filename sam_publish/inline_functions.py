@@ -2,7 +2,7 @@ from .helpers import get_code, count_spaces
 
 LEVEL_0_SPACES = 0 
 
-def inline_lambda_functions(cfn_input_template, cfn_output_template, working_folder, target_asset_folder, lambda_folder, s3_client):
+def inline_lambda_functions(cfn_input_template, cfn_output_template, working_folder, s3_client):
     with open(cfn_output_template, mode='w') as wf:
         with open(cfn_input_template, mode='r') as rf:
             current_level = 0
@@ -51,7 +51,7 @@ def inline_lambda_functions(cfn_input_template, cfn_output_template, working_fol
                     
                     if source_bucket != '' and source_key != '' and handler != '':
                         wf.writelines(' ' * level_4_spaces + 'ZipFile: |\n')
-                        wf.writelines(get_code(source_bucket, source_key, level_4_spaces + 2, working_folder, target_asset_folder, lambda_folder, s3_client))
+                        wf.writelines(get_code(source_bucket, source_key, level_4_spaces + 2, working_folder, s3_client))
                         wf.writelines(' ' * level_3_spaces + handler + '\n')
                         source_bucket = ''
                         source_key = ''
@@ -72,11 +72,10 @@ def inline_lambda_functions(cfn_input_template, cfn_output_template, working_fol
 
                     if source_bucket != '' and source_key != '' and handler != '':
                         wf.writelines(' ' * level_4_spaces + 'ZipFile: |\n')
-                        wf.writelines(get_code(source_bucket, source_key, level_4_spaces + 2, working_folder, target_asset_folder, lambda_folder, s3_client))
+                        wf.writelines(get_code(source_bucket, source_key, level_4_spaces + 2, working_folder, s3_client))
                         wf.writelines(' ' * level_3_spaces + handler + '\n')
                         source_bucket = ''
                         source_key = ''
                         handler = ''
-
                 else:
                     wf.writelines(line)

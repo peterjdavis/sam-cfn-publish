@@ -116,7 +116,7 @@ def main():
 
     input_template = output_template
     output_template = WORKING_FOLDER + '/temp_template_3.yaml'
-    inline_lambda_functions(input_template, output_template, WORKING_FOLDER, TARGET_ASSET_FOLDER, LAMBDA_FOLDER, s3_client)
+    inline_lambda_functions(input_template, output_template, WORKING_FOLDER, s3_client)
 
     check_create_folder(dirname(CFN_OUTPUT_TEMPLATE))
     os.replace(output_template, CFN_OUTPUT_TEMPLATE)
