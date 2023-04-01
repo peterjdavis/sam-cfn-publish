@@ -104,18 +104,18 @@ else:
 
 def main():
     input_template = CFN_INPUT_TEMPLATE
-    output_template = WORKING_FOLDER + '/temp_template_1.json'
+    output_template = f'{WORKING_FOLDER}/temp_template_1.json'
     transform_template(input_template, output_template)
     
     input_template = output_template
-    output_template = WORKING_FOLDER + '/temp_template_2.yaml'
+    output_template = f'{WORKING_FOLDER}/temp_template_2.yaml'
     if cli_options.move_assets:
         move_assets(input_template, output_template, TARGET_ASSET_BUCKET, TARGET_PREFIX, TARGET_ASSET_FOLDER, LAMBDA_FOLDER, LAYER_FOLDER, STATEMACHINE_FOLDER, s3_client)
     else:
         convert_to_yaml(input_template, output_template)
 
     input_template = output_template
-    output_template = WORKING_FOLDER + '/temp_template_3.yaml'
+    output_template = f'{WORKING_FOLDER}/temp_template_3.yaml'
     inline_lambda_functions(input_template, output_template, WORKING_FOLDER, s3_client)
 
     check_create_folder(dirname(CFN_OUTPUT_TEMPLATE))

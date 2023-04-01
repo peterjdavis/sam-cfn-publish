@@ -39,7 +39,7 @@ def check_create_folder(path):
 def get_lambda_source(path, handler, spaces, working_folder):
     shutil.unpack_archive(path, working_folder, 'zip')
     handler_prefix = handler.split('.')[0]
-    lambda_source_file = working_folder + '/' + handler_prefix + '.py'
+    lambda_source_file = f'{working_folder}/{handler_prefix}.py'
     function_content = ''
 
     with open(lambda_source_file, mode='r') as f:
