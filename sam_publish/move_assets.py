@@ -56,7 +56,7 @@ def process_statemachine(cfn, key, value, target_assets_bucket, target_prefix, t
     value['Properties']['DefinitionS3Location']['Key'] = {
         'Fn::Sub': target_prefix + target_sub_path + source_key}
 
-def move_assets(cfn_input_template, cfn_output_template, target_assets_bucket, target_prefix, target_asset_folder, lambda_path, layer_path, statemachine_path, s3_client):
+def move_assets(cfn_input_template, cfn_output_template, target_assets_bucket, target_prefix, target_asset_folder, move_lambda, lambda_path, layer_path, statemachine_path, s3_client):
     with open(cfn_input_template) as f:
         str_cfn = f.read()
 
@@ -64,8 +64,9 @@ def move_assets(cfn_input_template, cfn_output_template, target_assets_bucket, t
         resources = cfn["Resources"]
 
         for key, value in resources.items():
-            if value["Type"] == "AWS::Lambda::Function":
-                process_lambda(cfn, key, value, target_assets_bucket, target_prefix, target_asset_folder, lambda_path, s3_client)
+            if move_lambda:
+                if value["Type"] == "AWS::Lambda::Function":
+                    process_lambda(cfn, key, value, target_assets_bucket, target_prefix, target_asset_folder, lambda_path, s3_client)
             if value["Type"] == "AWS::Lambda::LayerVersion":
                 process_layer(cfn, key, value, target_assets_bucket, target_prefix, target_asset_folder, layer_path, s3_client)
             elif value["Type"] == "AWS::StepFunctions::StateMachine":
