@@ -1,0 +1,52 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  Parameter1:
+    Type: String
+    Default: Test
+  AssetBucket:
+    Type: String
+Resources:
+  NoVPCEndPointTestFunction:
+    Type: AWS::Lambda::Function
+    Metadata:
+      InlineSAMFunction: true
+      SamResourceId: NoVPCEndPointTestFunction
+    Properties:
+      Code:
+        S3Bucket: sam-270208939515-eu-west-2
+        S3Key: 8a8e69e3d7674022faaf3cac85f16146
+      Handler: index.lambda_handler
+      Role: !GetAtt 'NoVPCEndPointTestFunctionRole.Arn'
+      Runtime: python3.9
+      Tags:
+        - Key: lambda:createdBy
+          Value: SAM
+      Layers:
+        - !Ref 'SampleLayer057783d527'
+  NoVPCEndPointTestFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Tags:
+        - Key: lambda:createdBy
+          Value: SAM
+  SampleLayer057783d527:
+    Type: AWS::Lambda::LayerVersion
+    DeletionPolicy: Delete
+    Properties:
+      Content:
+        S3Bucket: !Ref 'AssetBucket'
+        S3Key: !Sub 'samples/assets/cfn/Layer/81a135cc28f797dfb00c07dc70670789'
+      LayerName: SampleLayer
+      CompatibleRuntimes:
+        - python3.9

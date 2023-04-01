@@ -1,7 +1,9 @@
+#!/usr/bin/env python3
+
 from pathlib import Path
-from . import update_references
-import boto3
 import argparse
+import boto3
+from . import update_references
 
 s3_client = boto3.client('s3')
 
@@ -30,6 +32,21 @@ parser.add_argument(
     type=Path,
     default=Path("./Assets/"),
 )
+
+parser.add_argument(
+    "--layer_folder",
+    help="Location the layer assets should be stored [default: Layer].",
+    type=Path,
+    default=Path("Layer"),
+)
+
+parser.add_argument(
+    "--statemachine_folder",
+    help="Location the statemachine assets should be stored [default: Statemachine].",
+    type=Path,
+    default=Path("Statemachine"),
+)
+
 parser.add_argument(
     "--target-asset-bucket",
     help="Bucket the assets should be stored [default: ./Assets/].",
@@ -37,19 +54,17 @@ parser.add_argument(
 
 cli_options, cli_cfn_parameters = parser.parse_known_args()
 
-def process_template():
-    update_references.process_template()
+def main():
+    update_references.process_template(CFN_INPUT_TEMPLATE, CFN_OUTPUT_TEMPLATE, TARGET_ASSET_FOLDER, LAYER_FOLDER, STATEMACHINE_FOLDER, s3_client)
 
-print (f'name = {__name__}')
-
-# if __name__ == "__main__":
-if 1 == 1:
+if __name__ == "__main__":
     print("Running Script")
     WORKING_FOLDER = str(cli_options.working_folder)
-    cfn_input_template = str(cli_options.cfn_input_template)
-    CFN_OUTPUT_TEMPLATE = WORKING_FOLDER + '/' + \
-        str(cli_options.cfn_output_template)
+    CFN_INPUT_TEMPLATE = str(cli_options.cfn_input_template)
+    CFN_OUTPUT_TEMPLATE = str(cli_options.cfn_output_template)
     TARGET_ASSET_FOLDER = str(cli_options.target_asset_folder)
+    LAYER_FOLDER = str(cli_options.layer_folder)
+    STATEMACHINE_FOLDER = str(cli_options.statemachine_folder)
     TARGET_ASSET_BUCKET = str(cli_options.target_asset_bucket)
 
     cfn_parameters = {}
@@ -58,4 +73,4 @@ if 1 == 1:
         cfn_parameter_split = cli_cfn_parameter.split('=')
         cfn_parameters[cfn_parameter_split[0]] = cfn_parameter_split[1]
 
-    process_template()
+    main()

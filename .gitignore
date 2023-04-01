@@ -131,5 +131,6 @@ dmypy.json
 # AWS SAM
 .aws-sam
 
-# project working folder 
+# project working folders 
 .tmp
+samples/assets/

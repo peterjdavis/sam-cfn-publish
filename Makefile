@@ -13,10 +13,10 @@ init :
 .PHONY : package
 package :
 	python3 -m build
+
 .PHONY : test
-test : init
-	cd samples
-	sam build -t sam-template.yaml
+test : 
+	sam build -t samples/sam-template.yaml
 	$(eval awsAccount := $(shell aws sts get-caller-identity --query Account --output text))
 	# $(eval tmpCFNDir := $(shell mktemp -d))
 	$(eval tmpCFNDir := .tmp)
@@ -32,8 +32,15 @@ test : init
 			mkdir ${tmpCFNDir};
 		fi
 
-	sam package --output-template-file ${tmpCFNDir}/cfn1-template-.tmp.yaml --s3-bucket sam-${awsAccount}-${awsRegion}
+	sam package -t samples/sam-template.yaml --output-template-file ${tmpCFNDir}/cfn1-template.tmp.yaml --s3-bucket sam-${awsAccount}-${awsRegion}
 	
-	python3 sam-translate.py \
-		--template-file=${tmpCFNDir}/template-cfn1.tmp.yaml \
-		--output-template=${tmpCFNDir}/template-cfn2.tmp.json
+	python3 sam_publish/sam-translate.py \
+		--template-file=${tmpCFNDir}/cfn1-template.tmp.yaml \
+		--output-template=${tmpCFNDir}/cfn2-template.tmp.json
+
+	python3 -m sam_publish \
+		--working_folder ${tmpCFNDir} \
+    	--cfn-input-template ${tmpCFNDir}/cfn2-template.tmp.json \
+    	--cfn-output-template samples/cfn-template.yaml \
+    	--target-asset-folder samples/assets/cfn \
+		--target-asset-bucket assets-${awsAccount}-${awsRegion} 

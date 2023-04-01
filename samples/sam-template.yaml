@@ -6,10 +6,13 @@ Parameters:
   Parameter1:
     Type: String
     Default: Test
+  AssetBucket:
+    Type: String
 
 Resources:
   SampleLayer:
     Type: AWS::Serverless::LayerVersion
+    DeletionPolicy: Delete
     Properties:
       LayerName: SampleLayer
       ContentUri: src/layer/SampleLayer
