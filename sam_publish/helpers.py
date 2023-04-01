@@ -1,6 +1,9 @@
 import os
 from os.path import basename
 import shutil
+import logging
+
+LOG = logging.getLogger(__name__)
 
 def get_cfn_parameter(search_item) -> any:
     for cfn_parameter in cfn_parameters:
@@ -50,6 +53,12 @@ def get_lambda_source(path, handler, spaces, working_folder):
 
 def get_code(source_bucket, source_key, spaces, working_folder, target_asset_folder, lambda_folder, s3_client):
     filename = get_filename_from_path(source_key)
+    LOG.info('Source Bucket: %s', source_bucket)
+    LOG.info('Source Key: %s', source_key)
+    LOG.info('target_asset_folder: %s', target_asset_folder)
+    LOG.info('lambda_folder: %s', lambda_folder)
+    LOG.info('filename: %s', filename)
+
     s3_client.download_file(
         source_bucket, source_key, target_asset_folder + lambda_folder + filename)
 
