@@ -3,10 +3,12 @@
 from pathlib import Path
 import argparse
 import os
-import boto3
-from .move_assets import move_assets
-from .sam_translate import transform_template
 import logging
+
+import boto3
+from .move_assets import move_assets, convert_to_yaml
+from .sam_translate import transform_template
+
 
 LOG = logging.getLogger(__name__)
 
@@ -71,8 +73,8 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    "--move-lambda",
-    help="Should references to the lambda assets be moved to a different bucket",
+    "--move-assets",
+    help="Should references to the assets be moved to a different bucket",
     action="store_true",
     default=False,
 )
@@ -105,8 +107,11 @@ def main():
     
     input_template = output_template
     output_template = WORKING_FOLDER + '/temp_template_2.yaml'
-    move_assets(input_template, output_template, TARGET_ASSET_BUCKET, TARGET_PREFIX, TARGET_ASSET_FOLDER, MOVE_LAMBDA, LAMBDA_FOLDER, LAYER_FOLDER, STATEMACHINE_FOLDER, s3_client)
 
+    if cli_options.move_assets:
+        move_assets(input_template, output_template, TARGET_ASSET_BUCKET, TARGET_PREFIX, TARGET_ASSET_FOLDER, LAMBDA_FOLDER, LAYER_FOLDER, STATEMACHINE_FOLDER, s3_client)
+    else:
+        convert_to_yaml(input_template, output_template)
     
     os.replace(output_template, CFN_OUTPUT_TEMPLATE)
 
@@ -116,7 +121,6 @@ if __name__ == "__main__":
     CFN_INPUT_TEMPLATE = str(cli_options.cfn_input_template)
     CFN_OUTPUT_TEMPLATE = str(cli_options.cfn_output_template)
     TARGET_ASSET_FOLDER = str(cli_options.target_asset_folder)
-    MOVE_LAMBDA = cli_options.move_lambda
     LAMBDA_FOLDER = str(cli_options.lambda_folder)
     LAYER_FOLDER = str(cli_options.layer_folder)
     STATEMACHINE_FOLDER = str(cli_options.statemachine_folder)
