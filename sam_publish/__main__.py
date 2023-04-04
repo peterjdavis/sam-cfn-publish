@@ -133,10 +133,10 @@ if __name__ == "__main__":
     TARGET_ASSET_BUCKET = str(cli_options.target_asset_bucket)
     TARGET_PREFIX = str(cli_options.target_prefix)
 
-    cfn_parameters = {}
-    for cli_cfn_parameter in cli_cfn_parameters:
-        print(cli_cfn_parameter)
-        cfn_parameter_split = cli_cfn_parameter.split('=')
-        cfn_parameters[cfn_parameter_split[0]] = cfn_parameter_split[1]
+    # cfn_parameters = {}
+    # for cli_cfn_parameter in cli_cfn_parameters:
+    #     print(cli_cfn_parameter)
+    #     cfn_parameter_split = cli_cfn_parameter.split('=')
+    #     cfn_parameters[cfn_parameter_split[0]] = cfn_parameter_split[1]
 
     main()
