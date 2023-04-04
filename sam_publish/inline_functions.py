@@ -68,10 +68,10 @@ def inline_lambda_functions(cfn_input_template, cfn_output_template, working_fol
                     level_4_element = line.strip()
                     current_level = 4
                     if in_code and level_4_element.startswith('S3Bucket: '):
-                        LOG.info('source_bucket before processing: $s', level_4_element)
-                        source_bucket = level_4_element.strip('S3Bucket: ').strip(' ')
+                        LOG.info('source_bucket before processing: %s', level_4_element)
+                        source_bucket = level_4_element.strip('S3Bucket:').strip(' ')
                     elif in_code and level_4_element.startswith('S3Key: '):
-                        source_key = level_4_element.strip('S3Key: ').strip(' ')
+                        source_key = level_4_element.strip('S3Key:').strip(' ')
                     else:
                         wf.writelines(line)
 
