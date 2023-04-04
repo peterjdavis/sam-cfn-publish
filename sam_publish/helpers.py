@@ -51,9 +51,9 @@ def get_lambda_source(path, handler, spaces, working_folder):
 def get_code(source_bucket, source_key, spaces, working_folder, s3_client):
     filename = get_filename_from_path(source_key)
     local_zip_file = f'{working_folder}/{filename}'
-    LOG.info('About to download source from source_bucket: %s', source_bucket)
-    LOG.info('About to download source from source_key: %s', source_key)
-    LOG.info('About to write source zip to: %s', local_zip_file)
+    LOG.debug('About to download source from source_bucket: %s', source_bucket)
+    LOG.debug('About to download source from source_key: %s', source_key)
+    LOG.debug('About to write source zip to: %s', local_zip_file)
     s3_client.download_file(
         source_bucket, source_key, local_zip_file)
 
