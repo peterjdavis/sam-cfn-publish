@@ -3,6 +3,8 @@ from os.path import basename
 import shutil
 import logging
 
+from cfn_flip import load_json, to_json, dump_json, to_yaml, dump_yaml
+
 LOG = logging.getLogger(__name__)
 
 def get_cfn_parameter(search_item) -> any:
@@ -67,3 +69,21 @@ def count_spaces(line):
         else:
             break
     return spaces
+
+def write_json_file(cfn, cfn_output_template):
+    """Convert ain memory cfn template to json file"""
+    with open(cfn_output_template, 'w') as f:
+        f.write(to_json(dump_json(cfn), clean_up=True))
+
+def write_yaml_file(cfn, cfn_output_template):
+    """Convert a in memory cfn template to yaml file"""
+    with open(cfn_output_template, 'w') as f:
+        f.write(to_yaml(dump_yaml(cfn), clean_up=True))
+
+def convert_to_yaml(cfn_input_template, cfn_output_template):
+    """Convert a json based cfn template on the filesystem to yaml"""
+    with open(cfn_input_template) as f:
+        str_cfn = f.read()
+        cfn = load_json(str_cfn)
+        write_yaml_file(cfn, cfn_output_template)
+        

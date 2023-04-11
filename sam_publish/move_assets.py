@@ -1,5 +1,5 @@
-from cfn_flip import load_json, to_yaml, dump_yaml
-from .helpers import resolve_element, get_filename_from_path, check_create_folder
+from cfn_flip import load_json
+from .helpers import resolve_element, get_filename_from_path, check_create_folder, write_json_file
 import logging
 
 LOG = logging.getLogger(__name__)
@@ -73,16 +73,5 @@ def move_assets(cfn_input_template, cfn_output_template, target_assets_bucket, t
             elif value["Type"] == "AWS::StepFunctions::StateMachine":
                 process_statemachine(cfn, key, value, target_assets_bucket, target_prefix, target_asset_folder, statemachine_path, s3_client)
 
-    write_yaml_file(cfn, cfn_output_template)
+    write_json_file(cfn, cfn_output_template)
 
-def write_yaml_file(cfn, cfn_output_template):
-    with open(cfn_output_template, 'w') as f:
-        f.write(to_yaml(dump_yaml(cfn), clean_up=True))
-
-def convert_to_yaml(cfn_input_template, cfn_output_template):
-    with open(cfn_input_template) as f:
-        str_cfn = f.read()
-
-        cfn = load_json(str_cfn)
-
-        write_yaml_file(cfn, cfn_output_template)

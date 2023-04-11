@@ -10,12 +10,13 @@ Resources:
     Properties:
       Code:
         S3Bucket: !Ref 'AssetBucket'
-        S3Key: !Sub 'samples/assets/cfn/Lambda/8a8e69e3d7674022faaf3cac85f16146'
+        S3Key: !Sub 'Lambda/8a8e69e3d7674022faaf3cac85f16146'
       Handler: index.lambda_handler
       Role: !GetAtt 'SampleFunctionRole.Arn'
       Runtime: python3.9
       Tags:
-        - Key: lambda:createdBy
+        - Key: LeaveTag
+          Value: This should stay
       Layers:
         - !Ref 'SampleLayer057783d527'
   SampleFunctionRole:
@@ -24,10 +25,17 @@ Resources:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       Tags:
-        - Key: lambda:createdBy
+        - Key: LeaveTag
+          Value: This should stay
   SampleInlineFunction:
     Type: AWS::Lambda::Function
     Metadata:
@@ -41,8 +49,6 @@ Resources:
       Handler: index.lambda_handler
       Role: !GetAtt 'SampleInlineFunctionRole.Arn'
       Runtime: python3.9
-      Tags:
-        - Key: lambda:createdBy
       Layers:
         - !Ref 'SampleLayer057783d527'
   SampleInlineFunctionRole:
@@ -51,10 +57,14 @@ Resources:
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      Tags:
-        - Key: lambda:createdBy
   SampleLayer057783d527:
     Type: AWS::Lambda::LayerVersion
     DeletionPolicy: Delete

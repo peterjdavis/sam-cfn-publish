@@ -1,4 +1,4 @@
 boto3
-cfn_flip
+cfn-flip
 aws-sam-translator
 build

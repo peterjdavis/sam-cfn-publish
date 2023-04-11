@@ -7,10 +7,11 @@ from os.path import dirname
 import logging
 
 import boto3
-from .move_assets import move_assets, convert_to_yaml
+from .tidy_tags_metadata import tidy_tags
+from .move_assets import move_assets
 from .inline_functions import inline_lambda_functions
 from .sam_translate import transform_template
-from .helpers import check_create_folder
+from .helpers import check_create_folder, convert_to_yaml
 
 LOG = logging.getLogger(__name__)
 
@@ -82,6 +83,13 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--tidy_tags_metadata",
+    help="Should SAM tags and metadata be tidied up?",
+    action="store_true",
+    default=True,
+)
+
+parser.add_argument(
     "--debug",
     help="Enables debug logging",
     action="store_true",
@@ -103,19 +111,31 @@ else:
     logging.basicConfig()
 
 def main():
+    output_template_no = 1
     input_template = CFN_INPUT_TEMPLATE
-    output_template = f'{WORKING_FOLDER}/temp_template_1.json'
+    output_template = f'{WORKING_FOLDER}/temp_template_{output_template_no}.json'
     transform_template(input_template, output_template)
     
-    input_template = output_template
-    output_template = f'{WORKING_FOLDER}/temp_template_2.yaml'
     if cli_options.move_assets:
+        input_template = output_template
+        output_template_no = output_template_no + 1
+        output_template = f'{WORKING_FOLDER}/temp_template_{output_template_no}.json'
         move_assets(input_template, output_template, TARGET_ASSET_BUCKET, TARGET_PREFIX, TARGET_ASSET_FOLDER, LAMBDA_FOLDER, LAYER_FOLDER, STATEMACHINE_FOLDER, s3_client)
-    else:
-        convert_to_yaml(input_template, output_template)
+
+    if cli_options.tidy_tags_metadata:
+        input_template = output_template
+        output_template_no = output_template_no + 1
+        output_template = f'{WORKING_FOLDER}/temp_template_{output_template_no}.json'
+        tidy_tags(input_template, output_template, WORKING_FOLDER)
 
     input_template = output_template
-    output_template = f'{WORKING_FOLDER}/temp_template_3.yaml'
+    output_template_no = output_template_no + 1
+    output_template = f'{WORKING_FOLDER}/temp_template_{output_template_no}.yaml'
+    convert_to_yaml(input_template, output_template)
+
+    input_template = output_template
+    output_template_no = output_template_no + 1
+    output_template = f'{WORKING_FOLDER}/temp_template_{output_template_no}.yaml'
     inline_lambda_functions(input_template, output_template, WORKING_FOLDER, s3_client)
 
     check_create_folder(dirname(CFN_OUTPUT_TEMPLATE))

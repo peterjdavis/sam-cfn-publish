@@ -16,6 +16,7 @@ package :
 
 .PHONY : test
 test : 
+	source .venv/bin/activate
 	sam build -t samples/sam-template.yaml
 	$(eval awsAccount := $(shell aws sts get-caller-identity --query Account --output text))
 	# $(eval tmpCFNDir := $(shell mktemp -d))

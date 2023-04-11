@@ -18,6 +18,7 @@ Resources:
     Metadata:
       BuildMethod: python3.9
 
+
   SampleFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -26,6 +27,8 @@ Resources:
       Runtime: python3.9
       Layers:
         - !Ref SampleLayer
+      Tags:
+        LeaveTag: This should stay
 
   SampleInlineFunction:
     Type: AWS::Serverless::Function
