@@ -33,48 +33,49 @@ def tidy_metadata(cfn_input_template, cfn_output_template, add_layout_gaps):
             level_1_spaces, level_2_spaces, level_3_spaces = 0, 0, 0
 
             for line in rf:
-                line_spaces = count_spaces(line)
-                if line_spaces == LEVEL_0_SPACES:
-                    level_0_element = line.strip()
-                    if add_layout_gaps and current_level != 0:
-                        wf.writelines('\n')
-                    current_level = 0
-                    wf.writelines(line)
-                elif (line_spaces > LEVEL_0_SPACES and current_level == 0) or \
-                    (line_spaces == level_1_spaces and current_level >= 1):
-                    level_1_spaces = line_spaces
-                    level_1_element = line.strip()
-                    if add_layout_gaps and current_level != 0:
-                        wf.writelines('\n')
-                    current_level = 1
-                    in_metadata = False
-                    other_metadata_found = False
-                    wf.writelines(line)
-                elif (line_spaces > level_1_spaces and current_level == 1) or \
-                    (line_spaces == level_2_spaces and current_level >= 2):
-                    level_2_spaces = line_spaces
-                    level_2_element = line.strip()
-                    current_level = 2
-                    if level_2_element.startswith('Metadata:') and not in_metadata:
-                        in_metadata = True
-                    else:
-                        in_metadata = False
+                if line.strip() != '':
+                    line_spaces = count_spaces(line)
+                    if line_spaces == LEVEL_0_SPACES:
+                        level_0_element = line.strip()
+                        if add_layout_gaps and current_level != 0:
+                            wf.writelines('\n')
+                        current_level = 0
                         wf.writelines(line)
-                elif (line_spaces > level_2_spaces and current_level == 2) or \
-                    (line_spaces == level_3_spaces and current_level >= 3):
-                    level_3_spaces = line_spaces
-                    level_3_element = line.strip()
-                    current_level = 3
-                    if in_metadata:
-                        if level_3_element.startswith('InlineSAMFunction: true') \
-                            or level_3_element.startswith('SamResourceId:'):
-                            LOG.info('Tidying metadata %s - %s', level_1_element, level_3_element)
+                    elif (line_spaces > LEVEL_0_SPACES and current_level == 0) or \
+                        (line_spaces == level_1_spaces and current_level >= 1):
+                        level_1_spaces = line_spaces
+                        level_1_element = line.strip()
+                        if add_layout_gaps and current_level != 0:
+                            wf.writelines('\n')
+                        current_level = 1
+                        in_metadata = False
+                        other_metadata_found = False
+                        wf.writelines(line)
+                    elif (line_spaces > level_1_spaces and current_level == 1) or \
+                        (line_spaces == level_2_spaces and current_level >= 2):
+                        level_2_spaces = line_spaces
+                        level_2_element = line.strip()
+                        current_level = 2
+                        if level_2_element.startswith('Metadata:') and not in_metadata:
+                            in_metadata = True
                         else:
-                            if in_metadata and not other_metadata_found:
-                                wf.writelines(' ' * level_2_spaces + level_2_element + '\n')
-                                other_metadata_found = True
+                            in_metadata = False
+                            wf.writelines(line)
+                    elif (line_spaces > level_2_spaces and current_level == 2) or \
+                        (line_spaces == level_3_spaces and current_level >= 3):
+                        level_3_spaces = line_spaces
+                        level_3_element = line.strip()
+                        current_level = 3
+                        if in_metadata:
+                            if level_3_element.startswith('InlineSAMFunction: true') \
+                                or level_3_element.startswith('SamResourceId:'):
+                                LOG.info('Tidying metadata %s - %s', level_1_element, level_3_element)
+                            else:
+                                if in_metadata and not other_metadata_found:
+                                    wf.writelines(' ' * level_2_spaces + level_2_element + '\n')
+                                    other_metadata_found = True
+                                wf.writelines(line)
+                        else:
                             wf.writelines(line)
                     else:
                         wf.writelines(line)
-                else:
-                    wf.writelines(line)
