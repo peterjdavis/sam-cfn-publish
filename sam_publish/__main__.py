@@ -7,7 +7,7 @@ from os.path import dirname
 import logging
 
 import boto3
-from .tidy_tags_metadata import tidy_tags
+from .tidy_tags_metadata import tidy_tags, tidy_metadata
 from .move_assets import move_assets
 from .inline_functions import inline_lambda_functions
 from .sam_translate import transform_template
@@ -90,6 +90,13 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    "--add_layout_gaps",
+    help="Should a new line be added between each resource for readability?",
+    action="store_true",
+    default=True,
+)
+
+parser.add_argument(
     "--debug",
     help="Enables debug logging",
     action="store_true",
@@ -138,6 +145,12 @@ def main():
     output_template = f'{WORKING_FOLDER}/temp_template_{output_template_no}.yaml'
     inline_lambda_functions(input_template, output_template, WORKING_FOLDER, s3_client)
 
+    if cli_options.tidy_tags_metadata:
+        input_template = output_template
+        output_template_no = output_template_no + 1
+        output_template = f'{WORKING_FOLDER}/temp_template_{output_template_no}.yaml'
+        tidy_metadata(input_template, output_template, cli_options.add_layout_gaps)
+
     check_create_folder(dirname(CFN_OUTPUT_TEMPLATE))
     os.replace(output_template, CFN_OUTPUT_TEMPLATE)
 
@@ -152,11 +165,5 @@ if __name__ == "__main__":
     STATEMACHINE_FOLDER = str(cli_options.statemachine_folder)
     TARGET_ASSET_BUCKET = str(cli_options.target_asset_bucket)
     TARGET_PREFIX = str(cli_options.target_prefix)
-
-    # cfn_parameters = {}
-    # for cli_cfn_parameter in cli_cfn_parameters:
-    #     print(cli_cfn_parameter)
-    #     cfn_parameter_split = cli_cfn_parameter.split('=')
-    #     cfn_parameters[cfn_parameter_split[0]] = cfn_parameter_split[1]
 
     main()

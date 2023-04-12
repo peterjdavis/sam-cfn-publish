@@ -3,7 +3,7 @@ from os.path import basename
 import shutil
 import logging
 
-from cfn_flip import load_json, to_json, dump_json, to_yaml, dump_yaml
+from cfn_flip import load_json, to_json, dump_json, to_yaml, dump_yaml, load_yaml
 
 LOG = logging.getLogger(__name__)
 
@@ -86,4 +86,3 @@ def convert_to_yaml(cfn_input_template, cfn_output_template):
         str_cfn = f.read()
         cfn = load_json(str_cfn)
         write_yaml_file(cfn, cfn_output_template)
-        

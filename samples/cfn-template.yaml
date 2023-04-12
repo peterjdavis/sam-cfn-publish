@@ -2,11 +2,10 @@ AWSTemplateFormatVersion: '2010-09-09'
 Parameters:
   AssetBucket:
     Type: String
+
 Resources:
   SampleFunction:
     Type: AWS::Lambda::Function
-    Metadata:
-      SamResourceId: SampleFunction
     Properties:
       Code:
         S3Bucket: !Ref 'AssetBucket'
@@ -19,6 +18,7 @@ Resources:
           Value: This should stay
       Layers:
         - !Ref 'SampleLayer057783d527'
+
   SampleFunctionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -36,11 +36,12 @@ Resources:
       Tags:
         - Key: LeaveTag
           Value: This should stay
+
   SampleInlineFunction:
     Type: AWS::Lambda::Function
     Metadata:
-      InlineSAMFunction: true
-      SamResourceId: SampleInlineFunction
+      LeaveMetadata: This should stay
+      LeaveMetadata2: This should stay
     Properties:
       Code:
         ZipFile: |
@@ -51,6 +52,7 @@ Resources:
       Runtime: python3.9
       Layers:
         - !Ref 'SampleLayer057783d527'
+
   SampleInlineFunctionRole:
     Type: AWS::IAM::Role
     Properties:
@@ -65,6 +67,7 @@ Resources:
                 - lambda.amazonaws.com
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
   SampleLayer057783d527:
     Type: AWS::Lambda::LayerVersion
     DeletionPolicy: Delete
