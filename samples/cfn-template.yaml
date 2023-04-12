@@ -1,0 +1,164 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  GetIdCDetailsCustom:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt 'GetIdCDetails.Arn'
+
+  GetIdCMgtAccountIdCustom:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt 'GetAccountId.Arn'
+      AccountName: IdCMgt
+
+  IdCAdminGroup:
+    Type: AWS::IdentityStore::Group
+    Properties:
+      Description: IdC Administrator Group
+      DisplayName: IdC Administrators
+      IdentityStoreId: !Sub '${GetIdCDetailsCustom.IdentityStoreId}'
+
+  IdCAdminPermissionSet:
+    Type: AWS::SSO::PermissionSet
+    Properties:
+      Name: AcceleratorIdCAdminAccess
+      InstanceArn: !Sub '${GetIdCDetailsCustom.InstanceArn}'
+      ManagedPolicies:
+        - arn:aws:iam::aws:policy/AdministratorAccess
+
+  IdCAdminIdCAssignment:
+    Type: AWS::SSO::Assignment
+    Properties:
+      InstanceArn: !Sub '${GetIdCDetailsCustom.InstanceArn}'
+      PermissionSetArn: !Sub '${IdCAdminPermissionSet.PermissionSetArn}'
+      PrincipalId: !Sub '${IdCAdminGroup.GroupId}'
+      PrincipalType: GROUP
+      TargetId: !Sub '${GetIdCMgtAccountIdCustom.AccountId}'
+      TargetType: AWS_ACCOUNT
+
+  GetIdCDetails:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+          import cfnresponse
+          import json
+          import boto3
+          
+          def lambda_handler(event, context):
+              print('REQUEST RECEIVED:\n' + json.dumps(event))    
+              responseData = {}
+              if event['RequestType'] == 'Delete':
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                  return
+              if event['RequestType'] == 'Create':
+                  try:
+                      sso_admin = boto3.client('sso-admin')
+                      instance = sso_admin.list_instances()
+                      responseData = instance['Instances'][0]
+                      print("Response Data:\n" + json.dumps(responseData))
+                  except Exception as e:
+                      responseData = {'error': str(e)}
+                      cfnresponse.send(event, context, cfnresponse.FAILED, responseData)
+                      return
+              cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+      Handler: index.lambda_handler
+      Role: !GetAtt 'GetIdCDetailsRole.Arn'
+      Runtime: python3.9
+
+  GetIdCDetailsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: GetIdCDetailsRolePolicy0
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: sso:ListInstances
+                Resource: '*'
+
+  GetAccountId:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+          import cfnresponse
+          import json
+          import boto3
+          
+          def lambda_handler(event, context):
+              print('REQUEST RECEIVED:\n' + json.dumps(event))    
+              responseData = {}
+              if event['RequestType'] == 'Delete':
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+                  return
+              if event['RequestType'] == 'Create':
+                  try:
+                      account_name = event['ResourceProperties']['AccountName']
+                      organisation = boto3.client('organizations')
+                      accounts = organisation.list_accounts()
+          
+                      for account in accounts['Accounts']:
+                          if account['Name'] == account_name:
+                              account_id = account['Id']
+                              break
+          
+                      if account_id != None:
+                          responseData['AccountId'] = account_id
+                          print("Response Data:\n" + json.dumps(responseData))
+                      else:
+                          raise Exception('Account not found')
+          
+                  except Exception as e:
+                      responseData = {'error': str(e)}
+                      cfnresponse.send(event, context, cfnresponse.FAILED, responseData)
+                      return
+              cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+      Handler: index.lambda_handler
+      Role: !GetAtt 'GetAccountIdRole.Arn'
+      Runtime: python3.9
+
+  GetAccountIdRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: GetAccountIdRolePolicy0
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: organizations:ListAccounts
+                Resource: '*'
+
+Outputs:
+  IdentityStoreId:
+    Value: !Sub '${GetIdCDetailsCustom.IdentityStoreId}'
+
+  InstanceArn:
+    Value: !Sub '${GetIdCDetailsCustom.InstanceArn}'
+
+  GetIdCMgtAccountIdCustom:
+    Value: !Sub '${GetIdCMgtAccountIdCustom.AccountId}'

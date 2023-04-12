@@ -127,3 +127,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# AWS SAM
+.aws-sam
+
+# project working folders 
+.tmp
+samples/assets/

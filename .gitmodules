@@ -1,0 +1,3 @@
+[submodule "sam_publish/serverless-application-model"]
+	path = sam_publish/serverless-application-model
+	url = https://github.com/aws/serverless-application-model

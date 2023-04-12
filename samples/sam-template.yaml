@@ -1,0 +1,44 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  AssetBucket:
+    Type: String
+
+Resources:
+  SampleLayer:
+    Type: AWS::Serverless::LayerVersion
+    DeletionPolicy: Delete
+    Properties:
+      LayerName: SampleLayer
+      ContentUri: src/layer/SampleLayer
+      CompatibleRuntimes:
+        - python3.9
+    Metadata:
+      BuildMethod: python3.9
+
+
+  SampleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/lambda/testFunction
+      Handler: index.lambda_handler
+      Runtime: python3.9
+      Layers:
+        - !Ref SampleLayer
+      Tags:
+        LeaveTag: This should stay
+
+  SampleInlineFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      InlineSAMFunction: true
+      LeaveMetadata: This should stay
+      LeaveMetadata2: This should stay
+    Properties:
+      CodeUri: src/lambda/testFunction
+      Handler: index.lambda_handler
+      Runtime: python3.9
+      Layers:
+        - !Ref SampleLayer
