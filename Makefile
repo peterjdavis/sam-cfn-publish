@@ -13,6 +13,21 @@ init :
 .PHONY : package
 package :
 	python3 -m build
+	pip3 install --force-reinstall dist/sam_publish-0.1.0-py3-none-any.whl 
+	$(eval tmpCFNDir := .tmp)
+
+	if test -e ${tmpCFNDir}; \
+		then echo ${tmpCFNDir} folder exists; \
+		else echo Creating ${tmpCFNDir} folder && \
+			mkdir ${tmpCFNDir};
+		fi
+	sam-publish \
+		--working_folder ${tmpCFNDir} \
+    	--cfn-input-template ${tmpCFNDir}/cfn1-template.tmp.yaml \
+    	--cfn-output-template samples/cfn-template.yaml \
+    	--target-asset-folder samples/assets/cfn \
+		--target-asset-bucket AssetBucket \
+
 
 .PHONY : test
 test : 

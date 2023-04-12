@@ -1,5 +1,4 @@
 # To Do
-- Tody up SAM tags
 - Move_assets need update lambdas and statemachines to be similar to layer file handling
   - Done but need to test (maybe with EE setup)
 - Look at the parameter handling function
@@ -11,3 +10,6 @@
 - Publish to PyPi
 - Write a blog post
 - List dependencies
+
+# Done
+- Tidy up SAM tags
