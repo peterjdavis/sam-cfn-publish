@@ -16,7 +16,21 @@
             "--target-asset-folder=samples/assets/cfn",
             "--target-asset-bucket=AssetBucket",
             "--move-assets",
-            "--verbose"
+            "--verbose"]
+        },
+        {
+            "name": "Python: SalesForce-APIG-Itegration",
+            "type": "python",
+            "request": "launch",
+            "module": "sam_publish",
+            "justMyCode": true,
+            "args": ["--working_folder=.tmp",
+            "--cfn-input-template=/var/folders/fk/155qz02s78z_rw_0_jv30dfst84mpz/T/tmp.7IobgT8p/template-cfn.tmp.yaml", 
+            "--cfn-output-template=samples/cfn-template.yaml", 
+            "--target-asset-folder=samples/assets/cfn",
+            "--target-asset-bucket=AssetBucket",
+            "--move-assets",
+            "--verbose"]
         }
     ]
 }
