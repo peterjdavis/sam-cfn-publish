@@ -47,10 +47,8 @@ def process_statemachine(cfn, key, value, target_assets_bucket, target_prefix, t
     source_key = resolve_element(
         cfn, value['Properties']['DefinitionS3Location']['Key'])
     target_local_path = f'{target_asset_folder}/{statemachine_path}/'
+    check_create_folder(target_local_path)
     filename = get_filename_from_path(source_key)
-    LOG.info('About to download source from source_bucket: %s', source_bucket)
-    LOG.info('About to download source from source_key: %s', source_key)
-    LOG.info('About to write source zip to: %s', f'{target_local_path}/{filename}')
     s3_client.download_file(
         source_bucket, source_key, f'{target_local_path}/{filename}')
     value['Properties']['DefinitionS3Location']['Bucket'] = {
