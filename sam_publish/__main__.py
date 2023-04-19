@@ -112,9 +112,7 @@ def main():
         default=True
     )
 
-    cli_options, cli_cfn_parameters = parser.parse_known_args()
-
-    print (cli_options)
+    cli_options = parser.parse_known_args()
 
     if cli_options.debug:
         logging.basicConfig(level=logging.DEBUG)
@@ -138,7 +136,6 @@ def main():
     output_template = f'{WORKING_FOLDER}/temp_template_{output_template_no}.json'
     transform_template(input_template, output_template)
     
-    LOG.info('TARGET_ASSET_FOLDER: %s', TARGET_ASSET_FOLDER)
     if cli_options.move_assets:
         input_template = output_template
         output_template_no = output_template_no + 1
