@@ -21,8 +21,10 @@ def process_lambda(cfn, key, value, target_assets_bucket, target_prefix, target_
                 'Ref': target_assets_bucket}
             value['Properties']['Code']['S3Key'] = {
                 'Fn::Sub': f'{target_prefix}/{lambda_path}/{source_key}'.strip('/')}
+        else:
+            LOG.info('Code is marked for inlining InlineSAMFunction Metadata: %s', value["Metadata"]['InlineSAMFunction'])
     else:
-        print(f'Code is not referenced from an S3 Bucket')
+        LOG.info('Code is not referenced from an S3 Bucket')
 
 def process_layer(cfn, key, value, target_assets_bucket, target_prefix, target_asset_folder, layer_path, s3_client):
     LOG.info('Processing Layer: %s', key)
