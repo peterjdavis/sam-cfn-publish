@@ -112,7 +112,7 @@ def main():
         default=True
     )
 
-    cli_options = parser.parse_known_args()
+    cli_options, cli_cfn_parameters = parser.parse_known_args()
 
     if cli_options.debug:
         logging.basicConfig(level=logging.DEBUG)
