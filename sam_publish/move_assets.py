@@ -9,8 +9,9 @@ LOG = logging.getLogger(__name__)
 
 def process_lambda(cfn, key, value, target_assets_bucket, target_prefix, target_asset_folder, lambda_path, s3_client):
     LOG.info('Processing Lambda: %s', key)
-    LOG.info('Value is: %s', json.dumps(value))
+    LOG.info('Value is: %s', json.dumps(value['Properties']['Code']))
     if 'S3Bucket' in value['Properties']['Code']:
+        LOG.info('Entering the first conditional based off S3Bucket being found')
         if not('InlineSAMFunction' in value["Metadata"] and value["Metadata"]['InlineSAMFunction'] == True):
             source_bucket = resolve_element(
                 cfn, value['Properties']['Code']['S3Bucket'])
