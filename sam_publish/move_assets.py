@@ -13,6 +13,7 @@ def process_lambda(cfn, key, value, target_assets_bucket, target_prefix, target_
     if 'S3Bucket' in value['Properties']['Code']:
         LOG.info('Entering the first conditional based off S3Bucket being found')
         if not('InlineSAMFunction' in value["Metadata"] and value["Metadata"]['InlineSAMFunction'] == True):
+            LOG.info('Entering the second conditional based off not inlineing')
             source_bucket = resolve_element(
                 cfn, value['Properties']['Code']['S3Bucket'])
             source_key = resolve_element(
