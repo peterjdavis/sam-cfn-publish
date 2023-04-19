@@ -114,6 +114,8 @@ def main():
 
     cli_options, cli_cfn_parameters = parser.parse_known_args()
 
+    print (cli_options)
+
     if cli_options.debug:
         logging.basicConfig(level=logging.DEBUG)
     elif cli_options.verbose:
