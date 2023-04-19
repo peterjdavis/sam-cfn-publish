@@ -19,6 +19,7 @@ def process_lambda(cfn, key, value, target_assets_bucket, target_prefix, target_
             source_key = resolve_element(
                 cfn, value['Properties']['Code']['S3Key'])
             target_local_path = f'{target_asset_folder}/{lambda_path}'
+            LOG.info('Local Path: %s', target_local_path)
             check_create_folder(target_local_path)
             filename = get_filename_from_path(source_key)
             s3_client.download_file(
