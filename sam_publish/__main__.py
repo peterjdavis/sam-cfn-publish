@@ -22,7 +22,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
 
     parser.add_argument(
-        "--working_folder",
+        "--working-folder",
         help="Working folder for the input and output files.",
         type=Path
     )
@@ -46,29 +46,29 @@ def main():
     )
 
     parser.add_argument(
-        "--lambda_folder",
-        help="Location the lambda assets should be stored [default: Lambda].",
+        "--lambda-folder",
+        help="Location the lambda assets should be stored [default: lambda].",
         type=Path,
-        default=Path("Lambda"),
+        default=Path("lambda"),
     )
 
     parser.add_argument(
-        "--layer_folder",
-        help="Location the layer assets should be stored [default: Layer].",
+        "--layer-folder",
+        help="Location the layer assets should be stored [default: layer].",
         type=Path,
-        default=Path("Layer"),
+        default=Path("layer"),
     )
 
     parser.add_argument(
-        "--statemachine_folder",
-        help="Location the statemachine assets should be stored [default: Statemachine].",
+        "--statemachine-folder",
+        help="Location the statemachine assets should be stored [default: statemachine].",
         type=Path,
-        default=Path("Statemachine"),
+        default=Path("statemachine"),
     )
 
     parser.add_argument(
         "--target-asset-bucket",
-        help="Bucket the assets should be stored [default: ./Assets/].",
+        help="Bucket the assets should be stored.",
     )
 
     parser.add_argument(
@@ -85,14 +85,14 @@ def main():
     )
 
     parser.add_argument(
-        "--tidy_tags_metadata",
+        "--tidy-tags-metadata",
         help="Should SAM tags and metadata be tidied up [Default: True]?",
         action="store_true",
         default=True,
     )
 
     parser.add_argument(
-        "--add_layout_gaps",
+        "--add-layout-gaps",
         help="Should a new line be added between each resource for readability [Default: True]?",
         action="store_true",
         default=True,
