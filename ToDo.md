@@ -1,15 +1,15 @@
 # To Do
-- Move_assets need update lambdas and statemachines to be similar to layer file handling
-  - Done but need to test (maybe with EE setup)
+- Fix up deletion of blank lines in inline lambdas
 - Look at the parameter handling function
-- Go through and make sure string formatting is consistent
   - Done but need to test
-- Update packaging to be a toml file 
-- Test with EE deployment
 - Create a proper readme
 - Publish to PyPi
 - Write a blog post
-- List dependencies
 
 # Done
 - Tidy up SAM tags
+- Move_assets need update lambdas and statemachines to be similar to layer file handling
+- Go through and make sure string formatting is consistent
+- Update packaging to be a toml file 
+- Test with EE deployment
+- List dependencies
