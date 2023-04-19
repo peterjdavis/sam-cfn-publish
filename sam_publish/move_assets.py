@@ -1,11 +1,15 @@
+import logging
+import json
+
 from cfn_flip import load_json
 from .helpers import resolve_element, get_filename_from_path, check_create_folder, write_json_file
-import logging
+
 
 LOG = logging.getLogger(__name__)
 
 def process_lambda(cfn, key, value, target_assets_bucket, target_prefix, target_asset_folder, lambda_path, s3_client):
     LOG.info('Processing Lambda: %s', key)
+    LOG.info('Value is: %s', json.dumps(value))
     if 'S3Bucket' in value['Properties']['Code']:
         if not('InlineSAMFunction' in value["Metadata"] and value["Metadata"]['InlineSAMFunction'] == True):
             source_bucket = resolve_element(
