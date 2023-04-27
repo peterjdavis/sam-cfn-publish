@@ -79,3 +79,5 @@ def tidy_metadata(cfn_input_template, cfn_output_template, add_layout_gaps):
                             wf.writelines(line)
                     else:
                         wf.writelines(line)
+                else:
+                    wf.writelines('\n')

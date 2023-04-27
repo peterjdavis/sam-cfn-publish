@@ -9,7 +9,7 @@ Resources:
     Properties:
       Code:
         S3Bucket: !Ref 'AssetBucket'
-        S3Key: !Sub 'lambda/8a8e69e3d7674022faaf3cac85f16146'
+        S3Key: !Sub 'lambda/e68bece52ae539a0c386ef019700ec05'
       Handler: index.lambda_handler
       Role: !GetAtt 'SampleFunctionRole.Arn'
       Runtime: python3.9
@@ -17,7 +17,7 @@ Resources:
         - Key: LeaveTag
           Value: This should stay
       Layers:
-        - !Ref 'SampleLayer13de05267e'
+        - !Ref 'SampleLayerccb8464607'
 
   SampleFunctionRole:
     Type: AWS::IAM::Role
@@ -46,12 +46,15 @@ Resources:
       Code:
         ZipFile: |
           def lambda_handler(event, context):
+              print(event)
+
               return 'dummy'
+
       Handler: index.lambda_handler
       Role: !GetAtt 'SampleInlineFunctionRole.Arn'
       Runtime: python3.9
       Layers:
-        - !Ref 'SampleLayer13de05267e'
+        - !Ref 'SampleLayerccb8464607'
 
   SampleInlineFunctionRole:
     Type: AWS::IAM::Role
@@ -68,7 +71,7 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
-  SampleLayer13de05267e:
+  SampleLayerccb8464607:
     Type: AWS::Lambda::LayerVersion
     DeletionPolicy: Delete
     Properties:
