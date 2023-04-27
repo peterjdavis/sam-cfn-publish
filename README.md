@@ -36,6 +36,26 @@ Much of this can be achieved by using commands such as `sam package` to package 
 
   `--verbose` - Enables verbose logging [Default: True]
 
+# Inlining Lambda Functions
+
+To inline a Lambda function you should include a metadata element `InlineSAMFunction: true` in the AWS::Serverless::Function resource as shown below
+
+```YAML
+  SampleInlineFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      InlineSAMFunction: true
+      LeaveMetadata: This should stay
+      LeaveMetadata2: This should stay
+    Properties:
+      CodeUri: src/lambda/testFunction
+      Handler: index.lambda_handler
+      Runtime: python3.9
+      Layers:
+        - !Ref SampleLayer
+```
+When processed by sam-publish the associated code will be included in the output CloudFormation template.  If the Lambda function relies on non standard packages these should be included in a Layer and referenced from the resource or the resource left as a reference in S3.
+
 # Example uses
 
 Assuming that you have a SAM Template in the current folder e.g. https://github.com/peterjdavis/sam-publish/blob/main/samples/sam-template.yaml then the following commands could be used to transform this to the CloudFormation template shown at https://github.com/peterjdavis/sam-publish/blob/main/samples/cfn-template.yaml
