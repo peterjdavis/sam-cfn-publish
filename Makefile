@@ -27,7 +27,7 @@ deploy-live : deploy
 .PHONY : test
 test : build
 	source .venv/bin/activate
-	pip3 install --force-reinstall dist/sam_publish-0.2.1-py3-none-any.whl 
+	pip3 install --force-reinstall dist/sam_publish-0.2.2-py3-none-any.whl 
 	sam build -t samples/sam-template.yaml
 	$(eval awsAccount := $(shell aws sts get-caller-identity --query Account --output text))
 	# $(eval tmpCFNDir := $(shell mktemp -d))
