@@ -5,6 +5,7 @@
 - Create a proper readme
 - Publish to PyPi
 - Write a blog post
+- Fix the parameters which don't have a value to be more sensible (if default to true create a 'no' version)
 
 # Done
 - Tidy up SAM tags

@@ -34,7 +34,7 @@ def main():
     )
     parser.add_argument(
         "--cfn-output-template",
-        help="Name of JSON template to output [default: template.yaml].",
+        help="Name of YAML template to output [default: template.yaml].",
         type=Path,
         default=Path("template.yaml"),
     )
@@ -164,7 +164,9 @@ def main():
         output_template = f'{WORKING_FOLDER}/temp_template_{output_template_no}.yaml'
         tidy_metadata(input_template, output_template, cli_options.add_layout_gaps)
 
-    check_create_folder(dirname(CFN_OUTPUT_TEMPLATE))
+    output_folder = dirname(CFN_OUTPUT_TEMPLATE)
+    if output_folder != '':
+        check_create_folder(output_folder)
     os.replace(output_template, CFN_OUTPUT_TEMPLATE)
 
 if __name__ == "__main__":
