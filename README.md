@@ -87,7 +87,7 @@ sam package -t sam-template.yaml \
             --output-template-file ${tmpCFNDir}/sam-template.tmp.yaml \
             --s3-bucket sam-${AWSAccount}-${AWSRegion} 
 
-# Update the CloudFormation tempalte so lambda's with an InlineSAMFunction: true metadata tag are inlined
+# Update the CloudFormation template so lambda's with an InlineSAMFunction: true metadata tag are inlined
 # assets are referenced from a parameter call AssetBucket and the layer and lambda are referenced from a default prefix
 sam-cfn-publish \
     --working-folder ${tmpCFNDir} \
