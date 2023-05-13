@@ -6,8 +6,8 @@ rm -rf .venv .aws-sam
 python3 -m venv .venv
 source .venv/bin/activate
 
-# Install sam-publish
-pip3 install sam-publish
+# Install sam-cfn-publish
+pip3 install sam-cfn-publish
 
 # Get some environment variables
 AWSAccount=$(aws sts get-caller-identity --query Account --output text)
@@ -31,7 +31,7 @@ sam package -t sam-template.yaml \
 
 # Update the CloudFormation tempalte so lambda's with an InlineSAMFunction: true metadata tag are inlined
 # assets are referenced from a parameter call AssetBucket and the layer and lambda are referenced from a default prefix
-sam-publish \
+sam-cfn-publish \
     --working-folder ${tmpCFNDir} \
     --cfn-input-template ${tmpCFNDir}/sam-template.tmp.yaml \
     --cfn-output-template cfn-template.yaml \

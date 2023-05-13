@@ -131,6 +131,10 @@ dmypy.json
 # AWS SAM
 .aws-sam
 
+# vscode
+.vscode 
+
 # project working folders 
 .tmp
 samples/assets/
+
