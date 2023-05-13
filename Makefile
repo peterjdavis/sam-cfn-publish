@@ -27,11 +27,11 @@ deploy-live : deploy
 .PHONY : test
 test : build
 	source .venv/bin/activate
-	pip3 install --force-reinstall dist/sam_publish-0.2.2-py3-none-any.whl 
+	pip3 install --force-reinstall dist/sam_cfn_publish-0.2.2-py3-none-any.whl 
 	sam build -t samples/sam-template.yaml
 	$(eval awsAccount := $(shell aws sts get-caller-identity --query Account --output text))
-	# $(eval tmpCFNDir := $(shell mktemp -d))
-	$(eval tmpCFNDir := .tmp)
+	$(eval tmpCFNDir := $(shell mktemp -d))
+	# $(eval tmpCFNDir := .tmp)
 	if aws s3api head-bucket --bucket sam-${awsAccount}-${awsRegion} 2>/dev/null; \
 		then echo Bucket sam-${awsAccount}-${awsRegion} exists; \
 		else echo Creating bucket sam-${awsAccount}-${awsRegion} && \
@@ -46,7 +46,7 @@ test : build
 
 	sam package -t samples/sam-template.yaml --output-template-file ${tmpCFNDir}/cfn1-template.tmp.yaml --s3-bucket sam-${awsAccount}-${awsRegion}
 
-	python3 -m sam_publish \
+	sam-cfn-publish \
 		--working-folder ${tmpCFNDir} \
     	--cfn-input-template ${tmpCFNDir}/cfn1-template.tmp.yaml \
     	--cfn-output-template samples/cfn-template.yaml \
@@ -54,3 +54,5 @@ test : build
 		--target-asset-bucket AssetBucket \
 		--move-assets \
 		--verbose
+
+	rm -rf ${tmpCFNDir}
