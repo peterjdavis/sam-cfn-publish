@@ -45,8 +45,6 @@ To inline a Lambda function you should include a metadata element `InlineSAMFunc
     Type: AWS::Serverless::Function
     Metadata:
       InlineSAMFunction: true
-      LeaveMetadata: This should stay
-      LeaveMetadata2: This should stay
     Properties:
       CodeUri: src/lambda/testFunction
       Handler: index.lambda_handler
