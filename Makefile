@@ -15,8 +15,8 @@ build :
 	rm -rf dist/
 	python3 -m build
 
-.PHONY : deploy
-deploy : build
+.PHONY : deploy-test
+deploy-test : build
 
 	python3 -m twine upload --skip-existing --repository testpypi dist/*
 
@@ -27,7 +27,7 @@ deploy-live : deploy
 .PHONY : test
 test : build
 	source .venv/bin/activate
-	pip3 install --force-reinstall dist/sam_cfn_publish-0.2.2-py3-none-any.whl 
+	pip3 install --force-reinstall dist/sam_cfn_publish-0.2.3-py3-none-any.whl 
 	sam build -t samples/sam-template.yaml
 	$(eval awsAccount := $(shell aws sts get-caller-identity --query Account --output text))
 	$(eval tmpCFNDir := $(shell mktemp -d))
