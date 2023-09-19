@@ -1,5 +1,6 @@
 import os
 from os.path import basename
+import tempfile
 import shutil
 import logging
 
@@ -86,3 +87,8 @@ def convert_to_yaml(cfn_input_template, cfn_output_template):
         str_cfn = f.read()
         cfn = load_json(str_cfn)
         write_yaml_file(cfn, cfn_output_template)
+
+def get_temp_folder():
+    temp_path = tempfile.mkdtemp()
+    return temp_path
+    
