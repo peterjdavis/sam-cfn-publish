@@ -40,15 +40,16 @@ Resources:
   SampleAthenaSpillBucket:
     Type: AWS::S3::Bucket
 
-  SampleAthenaDynamoDBConnector:
-    Type: AWS::Serverless::Application
-    Properties:
-      Location:
-        ApplicationId: arn:aws:serverlessrepo:us-east-1:292517598671:applications/AthenaDynamoDBConnector
-        SemanticVersion: 2023.25.1
-      Parameters: 
-        AthenaCatalogName: !Sub ${AWS::StackName}-ddb-athena-query-lambda
-        SpillBucket: !Ref SampleAthenaSpillBucket
+# Removed as includes a secret key in the generated CFN
+  # SampleAthenaDynamoDBConnector:
+  #   Type: AWS::Serverless::Application
+  #   Properties:
+  #     Location:
+  #       ApplicationId: arn:aws:serverlessrepo:us-east-1:292517598671:applications/AthenaDynamoDBConnector
+  #       SemanticVersion: 2023.25.1
+  #     Parameters: 
+  #       AthenaCatalogName: !Sub ${AWS::StackName}-ddb-athena-query-lambda
+  #       SpillBucket: !Ref SampleAthenaSpillBucket
 
   SampleConnector:
     Type: AWS::Serverless::Connector
