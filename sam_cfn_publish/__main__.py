@@ -47,23 +47,26 @@ def main():
 
     parser.add_argument(
         "--lambda-folder",
-        help="Location the lambda assets should be stored [default: lambda].",
-        type=Path,
-        default=Path("lambda"),
+        help="Location the lambda assets should be stored.",
+        # type=Path,
+        # default=Path("lambda"),
+        default='',
     )
 
     parser.add_argument(
         "--layer-folder",
-        help="Location the layer assets should be stored [default: layer].",
-        type=Path,
-        default=Path("layer"),
+        help="Location the layer assets should be stored.",
+        # type=Path,
+        # default=Path("layer"),
+        default='',
     )
 
     parser.add_argument(
         "--statemachine-folder",
-        help="Location the statemachine assets should be stored [default: statemachine].",
-        type=Path,
-        default=Path("statemachine"),
+        help="Location the statemachine assets should be stored",
+        # type=Path,
+        # default=Path("statemachine"),
+        default='',
     )
 
     parser.add_argument(

@@ -137,4 +137,6 @@ dmypy.json
 # project working folders 
 .tmp
 samples/assets/
+assets/
 
+.DS_Store

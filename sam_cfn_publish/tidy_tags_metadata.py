@@ -14,15 +14,19 @@ def tidy_tags(cfn_input_template, cfn_output_template, working_folder):
 
     for key, value in resources.items():
         LOG.info('Tidying tags in %s', key)
-        if "Tags" in value["Properties"]:
-            tags = value["Properties"]["Tags"]
-            i = 0
-            for tag in tags:
-                if tag['Key'] == 'lambda:createdBy' and tag['Value'] == 'SAM':
-                    del value["Properties"]["Tags"][i]
-                    i = i + 1
-            if value["Properties"]["Tags"] == []:
-                del value["Properties"]["Tags"]
+        if "Properties" in value:
+            if "Tags" in value["Properties"]:
+                tags = value["Properties"]["Tags"]
+                i = 0
+                for tag in tags:
+                    if 'Key' in tag and tag['Key'] == 'lambda:createdBy' and tag['Value'] == 'SAM':
+                        del value["Properties"]["Tags"][i]
+                        i = i + 1
+                    if 'httpapi:createdBy' in tag and tag['httpapi:createdBy'] == 'SAM':
+                        del value["Properties"]["Tags"][i]
+                        i = i + 1
+                if value["Properties"]["Tags"] == []:
+                    del value["Properties"]["Tags"]
     write_json_file(cfn, cfn_output_template)
 
 def tidy_metadata(cfn_input_template, cfn_output_template, add_layout_gaps):

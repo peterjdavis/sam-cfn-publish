@@ -5,29 +5,95 @@ Transform: AWS::Serverless-2016-10-31
 Parameters:
   AssetBucket:
     Type: String
+  APIStageName:
+    Type: String
+    Default: Test
 
 Resources:
-  SampleLayer:
-    Type: AWS::Serverless::LayerVersion
+  SampleApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: !Sub ${AWS::StackName}-SampleAPI
+      StageName: !Ref APIStageName
+      TracingEnabled: true
+      Auth:
+        DefaultAuthorizer: AWS_IAM
+        InvokeRole: NONE
+      MethodSettings:
+      - HttpMethod: '*'
+        LoggingLevel: INFO
+        ResourcePath: '/*'
+        MetricsEnabled: true
+        DataTraceEnabled: true
+      AccessLogSetting:
+        DestinationArn: !Sub ${SampleApiLogGroup.Arn}
+        Format: "{ 'requestId':'$context.requestId', 'ip': '$context.identity.sourceIp', 'caller':'$context.identity.caller', 'user':'$context.identity.user','requestTime':'$context.requestTime', 'xrayTraceId':'$context.xrayTraceId', 'wafResponseCode':'$context.wafResponseCode', 'httpMethod':'$context.httpMethod','resourcePath':'$context.resourcePath', 'status':'$context.status','protocol':'$context.protocol', 'responseLength':'$context.responseLength' }"
+
+  SampleApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: SampleApi
     DeletionPolicy: Delete
     Properties:
-      LayerName: SampleLayer
-      ContentUri: src/layer/SampleLayer
-      CompatibleRuntimes:
-        - python3.9
-    Metadata:
-      BuildMethod: python3.9
+      LogGroupName: !Sub /aws/apigateway/${SampleApi}
+      RetentionInDays: 1
+
+  SampleAthenaSpillBucket:
+    Type: AWS::S3::Bucket
+
+  SampleAthenaDynamoDBConnector:
+    Type: AWS::Serverless::Application
+    Properties:
+      Location:
+        ApplicationId: arn:aws:serverlessrepo:us-east-1:292517598671:applications/AthenaDynamoDBConnector
+        SemanticVersion: 2023.25.1
+      Parameters: 
+        AthenaCatalogName: !Sub ${AWS::StackName}-ddb-athena-query-lambda
+        SpillBucket: !Ref SampleAthenaSpillBucket
+
+  SampleConnector:
+    Type: AWS::Serverless::Connector
+    Properties:
+      Source: 
+        Id: SampleInlineFunction
+      Destination:
+        Id: SampleTable
+      Permissions: 
+        - Read
 
   SampleFunction:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src/lambda/testFunction
       Handler: index.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.10
+      Architectures: 
+        - arm64
       Layers:
         - !Ref SampleLayer
+      Events:
+        ApiEvents:
+          Type: Api
+          Properties:
+            Path: /
+            Method: get
+            RestApiId: !Ref SampleApi
+        # HttpApiEvents:
+        #   Type: HttpApi
+        #   Properties:
+        #     ApiId: !Ref SampleHttpApi
+        #     Method: GET
+        #     Path: /
+
       Tags:
         LeaveTag: This should stay
+    Connectors:
+      MyDDBConnector:
+        Properties:
+          Destination:
+            Id: SampleTable
+          Permissions: 
+            - Read
+            - Write
 
   SampleInlineFunction:
     Type: AWS::Serverless::Function
@@ -38,6 +104,44 @@ Resources:
     Properties:
       CodeUri: src/lambda/testFunction
       Handler: index.lambda_handler
-      Runtime: python3.9
+      Runtime: python3.10
+      Architectures: 
+        - arm64
       Layers:
         - !Ref SampleLayer
+
+  SampleHttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: !Ref APIStageName
+      AccessLogSettings:
+        DestinationArn: !Sub ${SampleHttpApiLogGroup.Arn}
+        Format: $context.requestId
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: 200
+      RouteSettings:
+        "GET /path":
+          ThrottlingBurstLimit: 500 # overridden in HttpApi Event
+      StageVariables:
+        StageVar: Value
+      FailOnWarnings: true
+
+  SampleHttpApiLogGroup:
+    Type: AWS::Logs::LogGroup
+
+  SampleLayer:
+    Type: AWS::Serverless::LayerVersion
+    DeletionPolicy: Delete
+    Properties:
+      LayerName: SampleLayer
+      ContentUri: src/layer/SampleLayer
+      CompatibleRuntimes:
+        - python3.10
+    Metadata:
+      BuildMethod: python3.10
+
+  SampleTable:
+    Type: AWS::Serverless::SimpleTable
+    DeletionPolicy: Delete
+    Properties:
+      TableName: !Sub ${AWS::StackName}-SampleTable

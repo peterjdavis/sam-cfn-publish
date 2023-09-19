@@ -4,6 +4,10 @@ SHELL := /bin/bash
 include .env
 export
 
+.PHONY : clean
+clean :
+	rm -rf dist/ .venv/ .tmp/
+
 .PHONY : init
 init :
 	python3 -m venv .venv
@@ -12,12 +16,10 @@ init :
 
 .PHONY : build
 build :
-	rm -rf dist/
 	python3 -m build
 
 .PHONY : deploy-test
 deploy-test : build
-
 	python3 -m twine upload --skip-existing --repository testpypi dist/*
 
 .PHONY : deploy-live
@@ -26,16 +28,20 @@ deploy-live : deploy
 
 .PHONY : test
 test : build
+# test :
 	source .venv/bin/activate
 	pip3 install --force-reinstall dist/sam_cfn_publish-0.2.3-py3-none-any.whl 
+	# pip3 install dist/sam_cfn_publish-0.2.3-py3-none-any.whl 
 	sam build -t samples/sam-template.yaml
 	$(eval awsAccount := $(shell aws sts get-caller-identity --query Account --output text))
-	$(eval tmpCFNDir := $(shell mktemp -d))
-	# $(eval tmpCFNDir := .tmp)
-	if aws s3api head-bucket --bucket sam-${awsAccount}-${awsRegion} 2>/dev/null; \
-		then echo Bucket sam-${awsAccount}-${awsRegion} exists; \
-		else echo Creating bucket sam-${awsAccount}-${awsRegion} && \
-			aws s3 mb s3://sam-${awsAccount}-${awsRegion} --region ${awsRegion} ; \
+	# $(eval tmpCFNDir := $(shell mktemp -d))
+	$(eval tmpCFNDir := .tmp)
+
+	$(eval assetBucket := sam-${awsAccount}-${awsRegion})
+	if aws s3api head-bucket --bucket ${assetBucket} 2>/dev/null; \
+		then echo Bucket ${assetBucket} exists; \
+		else echo Creating bucket ${assetBucket} && \
+			aws s3 mb s3://${assetBucket} --region ${awsRegion} ; \
 		fi
 
 	if test -e ${tmpCFNDir}; \
@@ -44,7 +50,9 @@ test : build
 			mkdir ${tmpCFNDir};
 		fi
 
-	sam package -t samples/sam-template.yaml --output-template-file ${tmpCFNDir}/cfn1-template.tmp.yaml --s3-bucket sam-${awsAccount}-${awsRegion}
+	sam package -t samples/sam-template.yaml --output-template-file ${tmpCFNDir}/cfn1-template.tmp.yaml --s3-bucket ${assetBucket}
+
+	rm -rf samples/assets
 
 	sam-cfn-publish \
 		--working-folder ${tmpCFNDir} \
@@ -55,4 +63,21 @@ test : build
 		--move-assets \
 		--verbose
 
-	rm -rf ${tmpCFNDir}
+	# rm -rf ${tmpCFNDir}
+
+.PHONY : deploy-cfn
+deploy-cfn : test
+	$(eval awsAccount := $(shell aws sts get-caller-identity --query Account --output text))
+
+	$(eval assetBucket := cfn-${awsAccount}-${awsRegion})
+	if aws s3api head-bucket --bucket ${assetBucket} 2>/dev/null; \
+		then echo Bucket ${assetBucket} exists; \
+		else echo Creating bucket ${assetBucket} && \
+			aws s3 mb s3://${assetBucket} --region ${awsRegion} ; \
+		fi
+
+	aws s3 sync samples/assets/cfn s3://${assetBucket} --delete
+
+	aws cloudformation deploy --stack-name sam-cfn-publish-sample --template-file samples/cfn-template.yaml \
+	 	--parameter-overrides AssetBucket=${assetBucket} \
+		--capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND

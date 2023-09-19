@@ -1,0 +1,1099 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Template for Base Central Module in Stream Data Guided Hackathon
+Parameters:
+  StreamInterval:
+    Description: Number of minutes between executing lambda to write to the Kinesis Stream
+    Type: Number
+    Default: 1
+    MinValue: 1
+
+  MaxHours:
+    Type: Number
+    Default: 8
+
+  MaxAttendees:
+    Type: Number
+    Default: 10000
+
+  TotalSocialPosts:
+    Type: Number
+    Description: Total number of posts in the social source data
+    Default: 160211
+
+  SocialPostObjectName:
+    Type: String
+    Default: SocialPosts.csv.gz
+
+  ExportPrefix:
+    Type: String
+
+  S3AssetBucket:
+    Type: String
+
+  S3AssetPrefix:
+    Type: String
+
+Resources:
+  StaticDataBucket:
+    Type: AWS::S3::Bucket
+
+  GenerateStaticDataLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${GenerateStaticDataLambda}'
+      RetentionInDays: 7
+
+  GenerateStaticDataLambdaCustom:
+    Type: Custom::GenerateStaticDataLambda
+    Properties:
+      ServiceToken: !Sub '${GenerateStaticDataLambda.Arn}'
+
+  BadgeScanStream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      StreamModeDetails:
+        StreamMode: ON_DEMAND
+
+  EventStartTimeParameter:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Type: String
+      Value: Not Started
+
+  WriteStreamBadgeScansLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${WriteStreamBadgeScansLambda}'
+      RetentionInDays: 7
+
+  SocialPostTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: Id
+          AttributeType: N
+      KeySchema:
+        - AttributeName: Id
+          KeyType: HASH
+      ImportSourceSpecification:
+        S3BucketSource:
+          S3Bucket: !Ref 'S3AssetBucket'
+          S3KeyPrefix: !Sub '${S3AssetPrefix}/${SocialPostObjectName}'
+        InputFormat: CSV
+        InputFormatOptions:
+          Csv:
+            Delimiter: ','
+        InputCompressionType: GZIP
+
+  SocialPostsStream:
+    Type: AWS::Kinesis::Stream
+    Properties:
+      StreamModeDetails:
+        StreamMode: ON_DEMAND
+
+  WriteSocialPostsLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${WriteSocialPostsLambda}'
+      RetentionInDays: 7
+
+  BlockParticipantAccessIAMPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Deny
+            Action: dynamodb:*
+            Resource:
+              - !Sub '${ScannedAttendeeTable.Arn}'
+              - !Sub '${SocialPostTable.Arn}'
+          - Effect: Deny
+            Action: lambda:*
+            Resource:
+              - !Sub '${WriteSocialPostsLambda.Arn}'
+              - !Sub '${WriteStreamBadgeScansLambda.Arn}'
+              - !Sub '${GenerateStaticDataLambda.Arn}'
+          - Effect: Deny
+            Action: s3:DeleteBucket
+            Resource:
+              - !Sub '${StaticDataBucket.Arn}'
+          - Effect: Deny
+            Action:
+              - s3:PutObject
+              - s3:DeleteObject
+              - s3:DeleteObjetVersion
+            Resource:
+              - !Sub '${StaticDataBucket.Arn}/*'
+
+  StartEventLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${StartEventLambda}'
+      RetentionInDays: 7
+
+  GenerateStaticDataLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+          import cfnresponse
+          import logging
+          import os
+          from faker import Faker
+          import json
+          import csv
+          import boto3
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+
+          s3_client = boto3.client('s3')
+          s3_resource = boto3.resource('s3')
+
+          FILE_NAME = 'registrations.csv'
+          LOCAL_PATH = '/tmp/' + FILE_NAME
+          S3_PREFIX = 'registrations/' + FILE_NAME
+          MAX_ATTENDEES = int(os.environ['MAX_ATTENDEES'])
+          ASSET_BUCKET = os.environ['ASSET_BUCKET']
+
+          fake = Faker()
+          Faker.seed(345345)
+
+          def lambda_handler(event, context):
+              logger.info('This is the event: ' + json.dumps(event))
+              if event.get('RequestType') == 'Create':
+                  responseData = {}
+                  responseData['message'] = "About to start the generating the static dat"
+                  logger.info('Sending %s to cloudformation', responseData['message'])
+                  try:
+                      dummy_registrations = generate_dummy_registrations(MAX_ATTENDEES)
+                      save_to_csv(dummy_registrations, LOCAL_PATH)
+                      copy_to_s3(ASSET_BUCKET, LOCAL_PATH, FILE_NAME)
+                      responseData['message'] = "Generated the static data"
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+                  except Exception as e:
+                      responseData['message'] = str(e)
+                      logger.error('Exception encountered: %s', responseData['message'])
+                      cfnresponse.send(event, context, cfnresponse.FAILED, responseData)
+              elif event.get('RequestType') == 'Delete':
+                  responseData = {}
+                  responseData['message'] = "Emptying the bucket"
+                  try:
+                      empty_bucket(ASSET_BUCKET)
+                      responseData['message'] = "Bucket %s emptied", ASSET_BUCKET
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData)
+                  except Exception as e:
+                      responseData['message'] = str(e)
+                      logger.error('Exception encountered: %s', responseData['message'])
+                      cfnresponse.send(event, context, cfnresponse.FAILED, responseData)
+              else:
+                  logger.error('Unknown operation: %s', event.get('RequestType'))
+
+          def generate_dummy_registrations(num_records):
+              data = []
+              for _ in range(num_records):
+                  registration_date = fake.date_between(start_date='-6m', end_date='today')
+                  first_name = fake.first_name().replace(",", "")
+                  last_name = fake.last_name().replace(",", "")
+                  company_name = fake.company().replace(",", "")
+                  title = fake.job().replace(",", "")
+                  industry = fake.random_element(elements=('Technology', 'Finance', 'Healthcare', 'Retail', 'Manufacturing', 'Public Sector'))
+                  event_expectations = fake.paragraphs(nb=2)
+                  data.append((registration_date, first_name, last_name, company_name, title, industry, event_expectations))
+              return data
+
+          def save_to_csv(data, filename):
+              with open(filename, 'w', newline='') as csvfile:
+                  logger.info('Writing data to csv file: ' + filename)
+
+                  writer = csv.writer(csvfile)
+                  writer.writerow(['id', 'registration_date', 'first_name', 'last_name', 'company_name', 'title', 'industry', 'event_expectations'])
+                  for i, row in enumerate(data):
+                      writer.writerow([i+1] + list(row))
+
+          def copy_to_s3(bucket, local_path, filename):
+              logger.info('Copying file to S3 bucket: ' + bucket)
+              s3_client.upload_file(local_path, bucket, S3_PREFIX)
+
+          def empty_bucket(bucket_name):
+              logging.info('About to delete the files in S3 bucket ' + bucket_name)
+              bucket = s3_resource.Bucket(bucket_name)
+              bucket.object_versions.delete()
+      Handler: index.lambda_handler
+      MemorySize: 256
+      Role: !GetAtt 'GenerateStaticDataLambdaRole.Arn'
+      Runtime: python3.10
+      Timeout: 120
+      Environment:
+        Variables:
+          MAX_ATTENDEES: !Ref 'MaxAttendees'
+          ASSET_BUCKET: !Ref 'StaticDataBucket'
+      TracingConfig:
+        Mode: Active
+      Architectures:
+        - arm64
+
+  GenerateStaticDataLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      Policies:
+        - PolicyName: GenerateStaticDataLambdaRolePolicy0
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                  - s3:GetLifecycleConfiguration
+                  - s3:PutLifecycleConfiguration
+                  - s3:DeleteObject
+                Effect: Allow
+                Resource:
+                  - !Sub
+                    - arn:${AWS::Partition}:s3:::${bucketName}
+                    - bucketName: !Ref 'StaticDataBucket'
+                  - !Sub
+                    - arn:${AWS::Partition}:s3:::${bucketName}/*
+                    - bucketName: !Ref 'StaticDataBucket'
+        - PolicyName: GenerateStaticDataLambdaRolePolicy1
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:ListObjectVersions
+                  - s3:DeleteObjectVersion
+                Resource: !Sub '${StaticDataBucket.Arn}/*'
+              - Effect: Allow
+                Action:
+                  - s3:ListBucketVersions
+                Resource:
+                  - !Sub '${StaticDataBucket.Arn}'
+
+  WriteStreamBadgeScansLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+          import os
+          import time
+          import datetime as dt
+          import random
+          import json
+          import logging
+          import threading
+          import math
+          import boto3
+
+
+          STREAM_ARN = os.environ["STREAM_ARN"]
+          PARAM_NAME = os.environ["PARAM_NAME"]
+          # DB_NAME = os.environ['DB_NAME'] 
+          TABLE_NAME = os.environ['TABLE_NAME']
+          MAX_HOURS = int(os.environ['MAX_HOURS'])
+          MAX_ATTENDEES = int(os.environ['MAX_ATTENDEES'])
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          # logger.setLevel(logging.DEBUG)
+
+          kinesis_client = boto3.client("kinesis")
+          ssm_client = boto3.client("ssm")
+          timestream_client = boto3.client("timestream-query")
+          ddb_client = boto3.client('dynamodb')
+
+          def lambda_handler(event, context):
+              event_running_hours = get_event_running_hours()
+              logger.info("Event Running Hours: %s", event_running_hours)
+
+              # attendees_arrived = attendees_scanned()
+              current_attendees = get_attendees()
+              current_attendees_count = len(current_attendees)
+
+              logger.info('Current number of attendees: %s', current_attendees_count)
+
+              # if len(current_attendees) > 0:
+              #     current_attendees = get_attendees()
+              #     current_attendees_count = len(current_attendees)
+
+              if event_running_hours != 'Not Started' and event_running_hours <= MAX_HOURS:
+                  registration_scanning_thread = threading.Thread(target=registration_scanning, args=(event_running_hours, current_attendees_count, ))
+                  registration_scanning_thread.start()
+
+                  if current_attendees_count > 0:
+                      booth_scanning_thread = threading.Thread(target=booth_scanning, args=(event_running_hours, current_attendees, current_attendees_count, ))
+                      booth_scanning_thread.start()
+
+                      if event_running_hours > 0:
+                          exit_scanning_thread = threading.Thread(target=exit_scanning, args=(event_running_hours, current_attendees, current_attendees_count, ))
+                          exit_scanning_thread.start()
+                          exit_scanning_thread.join()
+
+                      booth_scanning_thread.join()
+
+
+                  registration_scanning_thread.join()
+
+          def get_event_running_hours():
+              response = ssm_client.get_parameter(Name=PARAM_NAME, WithDecryption=False)
+
+              event_start_time = response['Parameter']['Value']
+
+              if event_start_time == 'Not Started':
+                  return event_start_time
+              else:
+                  event_start_time = dt.datetime.fromisoformat(event_start_time)
+
+                  event_elapsed_time = dt.datetime.now() - event_start_time
+                  event_running_hours = int(event_elapsed_time / dt.timedelta(hours=1))
+                  return event_running_hours
+
+          def attendees_scanned():
+
+              query_string = f'SELECT * FROM "{DB_NAME}"."{TABLE_NAME}" LIMIT 1'
+
+              paginator = timestream_client.get_paginator('query')
+              page_iterator = paginator.paginate(QueryString=query_string)
+              row_found = False
+              for page in page_iterator:
+                  for row in page["Rows"]:
+                      row_found = True
+
+              return row_found
+
+          def get_attendees():
+              response = ddb_client.scan(
+                  TableName=TABLE_NAME,
+                  Select='ALL_ATTRIBUTES'
+              )
+
+              logger.debug('get_attendees response %s', json.dumps(response, indent=4))
+              return response['Items']
+
+          def registration_scanning(event_running_hours, current_attendees_count):
+              random_scan_count = random.randint(1, (20))
+              logger.debug('Registration Scanning Random Scan Count: %s', random_scan_count)
+
+              scan_count = int(random_scan_count * math.floor(MAX_HOURS - event_running_hours))
+              if event_running_hours >= (MAX_HOURS - 1) or current_attendees_count >= MAX_ATTENDEES:
+                  scan_count = 0
+              elif scan_count > 60:
+                  scan_count = 60 + random.randint(1, 20)
+
+              logger.info('Registration Scanning Scan Count: %s', scan_count)
+
+              for _ in range(scan_count):
+                  time.sleep(math.floor(60 / scan_count) + 1)
+                  badge_scan = create_badge_scan()
+                  response = write_to_stream(badge_scan)
+                  logger.debug(response)
+                  response = write_to_ddb(badge_scan)
+                  logger.debug(json.dumps(response, indent=4))
+
+          def booth_scanning(event_running_hours, current_attendees, current_attendees_count):
+              random_scan_count = random.randint(1, (40))
+              logger.debug('Booth Scanning Random Scan Count: %s', random_scan_count)
+              if event_running_hours == 0 or event_running_hours > 7:
+                  scan_count = int(random_scan_count / 2)
+              elif event_running_hours > 2:
+                  scan_count = random_scan_count * int(event_running_hours / 2)
+              else:
+                  scan_count = random_scan_count * event_running_hours
+
+              if scan_count > 120:
+                  scan_count = 120
+              logger.info('Booth Scanning Scan Count: %s', scan_count)
+
+              for _ in range(scan_count):
+                  time.sleep(1)
+                  booth_scan = create_booth_scan(current_attendees, current_attendees_count)
+                  response = write_to_stream(booth_scan)
+                  logger.debug(response)
+
+          def exit_scanning(event_running_hours, current_attendees, current_attendees_count):
+              random_scan_count = random.randint(1, (20))
+
+              logger.debug('Exit Scanning Random Scan Count: %s', random_scan_count)
+
+              scan_count = math.floor((random_scan_count * event_running_hours) * math.ceil(current_attendees_count / 3000))
+              if scan_count > current_attendees_count:
+                  scan_count = current_attendees_count   
+              if scan_count > 60:
+                  scan_count = 60 
+              logger.info('Exit Scanning Scan Count: %s', scan_count)
+
+              for _ in range(scan_count):
+                  time.sleep(random.randint(1, 3))
+                  exit_scan = create_exit_scan(current_attendees, current_attendees_count)
+                  response = write_to_stream(exit_scan)
+                  logger.debug(response)
+                  response = delete_from_ddb(exit_scan)
+                  logger.debug(json.dumps(response, indent=4))
+
+          def create_badge_scan():
+              badge_id = random.randint(1, MAX_ATTENDEES)
+              response = ddb_client.get_item(
+                  TableName=TABLE_NAME,
+                  Key={
+                      'id': {
+                          'S': str(badge_id)
+                      }
+                  }
+              )
+
+              i = 1
+              while 'Item' in response:
+                  i = i + 1
+                  logger.info('Badge found generated another random id: %s', badge_id)
+                  badge_id = random.randint(1, MAX_ATTENDEES)
+                  response = ddb_client.get_item(
+                      TableName=TABLE_NAME,
+                      Key={
+                          'id': {
+                              'S': str(badge_id)
+                          }
+                      }
+                  )
+                  if i > 500:
+                      logger.info('Tried 500 times to get a badge id, giving up')
+                      break
+              logger.debug('DDB Response for unique badge id check: %s', json.dumps(response, indent=4))
+
+              desk_no = random.randint(1, 6)
+              current_time = _current_milli_time()
+              dimensions = [
+                      {'Name': 'location','Value': 'sign-in-desk-' + str(desk_no)},
+                      {'Name': 'scan_type','Value': 'entry'},
+                      {'Name': 'badge_id','Value': str(badge_id)}
+                  ]
+
+              badge_scan = [{
+                  'Dimensions': dimensions,
+                  'MeasureName': 'scan',
+                  'MeasureValue': '1',
+                  'MeasureValueType': 'BIGINT',
+                  'Time': current_time
+              }]
+
+              return badge_scan
+
+          def create_booth_scan(current_attendees, current_attendees_count):
+              badge_id = current_attendees[random.randint(0, current_attendees_count - 1)]['id']['S']
+              booth_no = random.randint(1, 50)
+              current_time = _current_milli_time()
+              dimensions = [
+                      {'Name': 'location','Value': 'booth-' + format(booth_no, '02d')},
+                      {'Name': 'scan_type','Value': 'booth'},
+                      {'Name': 'badge_id','Value': str(badge_id)}
+                  ]
+
+              badge_scan = [{
+                  'Dimensions': dimensions,
+                  'MeasureName': 'scan',
+                  'MeasureValue': '1',
+                  'MeasureValueType': 'BIGINT',
+                  'Time': current_time
+              }]
+
+              return badge_scan
+
+          def create_exit_scan(current_attendees, current_attendees_count):
+              # badge_id = current_attendees[random.randint(0, current_attendees_count - 1)]['Data'][0]['ScalarValue']
+              badge_id = current_attendees[random.randint(0, current_attendees_count - 1)]['id']['S']
+
+              exit_no = random.randint(1, 50)
+              current_time = _current_milli_time()
+              dimensions = [
+                      {'Name': 'location','Value': 'exit-point-' + str(exit_no)},
+                      {'Name': 'scan_type','Value': 'exit'},
+                      {'Name': 'badge_id','Value': str(badge_id)}
+                  ]
+
+              badge_scan = [{
+                  'Dimensions': dimensions,
+                  'MeasureName': 'scan',
+                  'MeasureValue': '1',
+                  'MeasureValueType': 'BIGINT',
+                  'Time': current_time
+              }]
+
+              return badge_scan
+
+          def write_to_stream(badge_scan):
+              response = kinesis_client.put_record(
+                  StreamARN=STREAM_ARN,
+                  Data=json.dumps(badge_scan),
+                  PartitionKey=badge_scan[0]['Dimensions'][2]['Value']
+              )
+
+              if response['ResponseMetadata']['HTTPStatusCode'] != 200:
+                  logger.error('Error writing to Kinesis: %s', json.dumps(response, indent=4))
+                  raise Exception('Error writing to Kinesis')
+
+              return response
+
+          def write_to_ddb(badge_scan):
+              logger.debug('Data to be written to DDB: %s', json.dumps(badge_scan, indent=4))
+              item = {'id': {'S': badge_scan[0]['Dimensions'][2]['Value']}}
+
+              response = ddb_client.put_item(
+                  TableName=TABLE_NAME,
+                  Item=item
+              )
+
+              if response['ResponseMetadata']['HTTPStatusCode'] != 200:
+                  logger.error('Error writing to DDB: %s', json.dumps(response, indent=4))
+                  raise Exception('Error writing to DDB')
+
+              return response
+
+          def delete_from_ddb(exit_scan):
+              logger.debug('Data to be deleted from DDB: %s', json.dumps(exit_scan, indent=4))
+              item = {'id': {'S': exit_scan[0]['Dimensions'][2]['Value']}}
+
+              response = ddb_client.delete_item(
+                  TableName=TABLE_NAME,
+                  Key=item
+              )
+
+              if response['ResponseMetadata']['HTTPStatusCode'] != 200:
+                  logger.error('Error deleting from DDB: %s', json.dumps(response, indent=4))
+                  raise Exception('Error deleting from DDB')
+
+              return response
+
+          def _current_milli_time():
+              return str(int(round(time.time() * 1000)))
+      Handler: index.lambda_handler
+      Role: !GetAtt 'WriteStreamBadgeScansLambdaRole.Arn'
+      Runtime: python3.10
+      Timeout: 240
+      Environment:
+        Variables:
+          STREAM_ARN: !Sub '${BadgeScanStream.Arn}'
+          PARAM_NAME: !Ref 'EventStartTimeParameter'
+          TABLE_NAME: !Ref 'ScannedAttendeeTable'
+          MAX_HOURS: !Ref 'MaxHours'
+          MAX_ATTENDEES: !Ref 'MaxAttendees'
+      TracingConfig:
+        Mode: Active
+      Architectures:
+        - arm64
+
+  WriteStreamBadgeScansLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      Policies:
+        - PolicyName: WriteStreamBadgeScansLambdaRolePolicy0
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - kinesis:AddTagsToStream
+                  - kinesis:CreateStream
+                  - kinesis:DecreaseStreamRetentionPeriod
+                  - kinesis:DeleteStream
+                  - kinesis:DescribeStream
+                  - kinesis:DescribeStreamSummary
+                  - kinesis:GetShardIterator
+                  - kinesis:IncreaseStreamRetentionPeriod
+                  - kinesis:ListTagsForStream
+                  - kinesis:MergeShards
+                  - kinesis:PutRecord
+                  - kinesis:PutRecords
+                  - kinesis:SplitShard
+                  - kinesis:RemoveTagsFromStream
+                Effect: Allow
+                Resource: !Sub
+                  - arn:${AWS::Partition}:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${streamName}
+                  - streamName: !Ref 'BadgeScanStream'
+        - PolicyName: WriteStreamBadgeScansLambdaRolePolicy1
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - ssm:DescribeParameters
+                Effect: Allow
+                Resource: '*'
+              - Action:
+                  - ssm:GetParameters
+                  - ssm:GetParameter
+                  - ssm:GetParametersByPath
+                Effect: Allow
+                Resource: !Sub
+                  - arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${parameterName}
+                  - parameterName: !Ref 'EventStartTimeParameter'
+
+  WriteStreamBadgeScansLambdaScheduleEvent:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      ScheduleExpression: !Sub 'rate(${StreamInterval} minute)'
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      Name: !Sub '${AWS::StackName}-WriteStreamBadgeScansLambda-ScheduleEvent'
+      Target:
+        Arn: !GetAtt 'WriteStreamBadgeScansLambda.Arn'
+        RoleArn: !GetAtt 'WriteStreamBadgeScansLambdaScheduleEventRole.Arn'
+
+  WriteStreamBadgeScansLambdaScheduleEventRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - scheduler.amazonaws.com
+      Policies:
+        - PolicyName: WriteStreamBadgeScansLambdaScheduleEventLambdaPolicy
+          PolicyDocument:
+            Statement:
+              - Action: lambda:InvokeFunction
+                Effect: Allow
+                Resource: !GetAtt 'WriteStreamBadgeScansLambda.Arn'
+
+  WriteSocialPostsLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+          import os
+          import datetime as dt
+          import random
+          import json
+          import logging
+          import math
+          import boto3
+
+          from aws_xray_sdk.core import xray_recorder
+          from aws_xray_sdk.core import patch_all
+
+          patch_all()
+
+          STREAM_ARN = os.environ["STREAM_ARN"]
+          PARAM_NAME = os.environ["PARAM_NAME"]
+          SOCIAL_POST_TABLE_NAME = os.environ['SOCIAL_POST_TABLE_NAME']
+          SCANNED_ATTENDEE_TABLE_NAME = os.environ['SCANNED_ATTENDEE_TABLE_NAME']
+          TOTAL_SOCIAL_POSTS=os.environ['TOTAL_SOCIAL_POSTS']
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
+          # logger.setLevel(logging.DEBUG)
+
+          kinesis_client = boto3.client("kinesis")
+          ssm_client = boto3.client("ssm")
+          ddb_client = boto3.client('dynamodb')
+
+          def lambda_handler(event, context):
+              event_running_hours = get_event_running_hours()
+              logger.info("Event Running Hours: %s", event_running_hours)
+
+              current_attendees = get_attendees()
+              current_attendees_count = len(current_attendees)
+
+              logger.info('Current number of attendees: %s', current_attendees_count)
+
+              if current_attendees_count > 0 and event_running_hours > 0:
+                  logger.info('Event is running and attendees have arrived')
+
+                  number_of_posts = math.ceil(current_attendees_count / 3000) * random.randint(1, 4)
+                  logger.info('Number of posts: %s', number_of_posts) 
+
+                  for _  in range(number_of_posts):
+                      post = create_social_post()
+                      logger.debug('Post created: %s', json.dumps(post, indent=4))
+                      response = kinesis_client.put_record(
+                          StreamARN=STREAM_ARN,
+                          Data=json.dumps(post),
+                          PartitionKey=post['id']
+                      )
+
+                      if response['ResponseMetadata']['HTTPStatusCode'] != 200:
+                          logger.error('Response: %s', json.dumps(response, indent=4))
+
+          def create_social_post():
+              post_id = random.randint(1, int(TOTAL_SOCIAL_POSTS))
+
+              logger.info('Creating social post with id: %s', post_id)
+
+              response = ddb_client.get_item(
+                  TableName=SOCIAL_POST_TABLE_NAME,
+                  Key={
+                      'Id': {
+                          'N': str(post_id)
+                      }
+                  }
+              )
+              ddb_post = response['Item']
+
+              post = {
+                  'id': ddb_post['Postid']['S'],
+                  'source': 'Twitter',
+                  'user': ddb_post['user']['S'],
+                  'message': ddb_post['post']['S'],
+                  'timestamp': str(dt.datetime.now())
+              }
+              return post
+
+          def get_event_running_hours():
+              response = ssm_client.get_parameter(Name=PARAM_NAME, WithDecryption=False)
+
+              event_start_time = response['Parameter']['Value']
+
+              if event_start_time == 'Not Started':
+                  return event_start_time
+              else:
+                  event_start_time = dt.datetime.fromisoformat(event_start_time)
+
+                  event_elapsed_time = dt.datetime.now() - event_start_time
+                  event_running_hours = int(event_elapsed_time / dt.timedelta(hours=1))
+                  return event_running_hours
+
+          def get_attendees():
+              response = ddb_client.scan(
+                  TableName=SCANNED_ATTENDEE_TABLE_NAME,
+                  Select='ALL_ATTRIBUTES'
+              )
+
+              return response['Items']
+
+      Handler: index.lambda_handler
+      Role: !GetAtt 'WriteSocialPostsLambdaRole.Arn'
+      Runtime: python3.10
+      Timeout: 240
+      Environment:
+        Variables:
+          STREAM_ARN: !Sub '${SocialPostsStream.Arn}'
+          PARAM_NAME: !Ref 'EventStartTimeParameter'
+          SOCIAL_POST_TABLE_NAME: !Ref 'SocialPostTable'
+          SCANNED_ATTENDEE_TABLE_NAME: !Ref 'ScannedAttendeeTable'
+          TOTAL_SOCIAL_POSTS: !Ref 'TotalSocialPosts'
+      TracingConfig:
+        Mode: Active
+      Layers:
+        - !Ref 'XRayLayer40fc5eb8f3'
+      Architectures:
+        - arm64
+
+  WriteSocialPostsLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      Policies:
+        - PolicyName: WriteSocialPostsLambdaRolePolicy0
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - kinesis:AddTagsToStream
+                  - kinesis:CreateStream
+                  - kinesis:DecreaseStreamRetentionPeriod
+                  - kinesis:DeleteStream
+                  - kinesis:DescribeStream
+                  - kinesis:DescribeStreamSummary
+                  - kinesis:GetShardIterator
+                  - kinesis:IncreaseStreamRetentionPeriod
+                  - kinesis:ListTagsForStream
+                  - kinesis:MergeShards
+                  - kinesis:PutRecord
+                  - kinesis:PutRecords
+                  - kinesis:SplitShard
+                  - kinesis:RemoveTagsFromStream
+                Effect: Allow
+                Resource: !Sub
+                  - arn:${AWS::Partition}:kinesis:${AWS::Region}:${AWS::AccountId}:stream/${streamName}
+                  - streamName: !Ref 'SocialPostsStream'
+        - PolicyName: WriteSocialPostsLambdaRolePolicy1
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - ssm:DescribeParameters
+                Effect: Allow
+                Resource: '*'
+              - Action:
+                  - ssm:GetParameters
+                  - ssm:GetParameter
+                  - ssm:GetParametersByPath
+                Effect: Allow
+                Resource: !Sub
+                  - arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${parameterName}
+                  - parameterName: !Ref 'EventStartTimeParameter'
+
+  WriteSocialPostsLambdaScheduleEvent:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      ScheduleExpression: !Sub 'rate(${StreamInterval} minute)'
+      FlexibleTimeWindow:
+        Mode: 'OFF'
+      Name: !Sub '${AWS::StackName}-WriteSocialPostsLambda-ScheduleEvent'
+      Target:
+        Arn: !GetAtt 'WriteSocialPostsLambda.Arn'
+        RoleArn: !GetAtt 'WriteSocialPostsLambdaScheduleEventRole.Arn'
+
+  WriteSocialPostsLambdaScheduleEventRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - scheduler.amazonaws.com
+      Policies:
+        - PolicyName: WriteSocialPostsLambdaScheduleEventLambdaPolicy
+          PolicyDocument:
+            Statement:
+              - Action: lambda:InvokeFunction
+                Effect: Allow
+                Resource: !GetAtt 'WriteSocialPostsLambda.Arn'
+
+  StartEventLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ZipFile: |
+          import os
+          from datetime import datetime as dt
+          import boto3
+
+          PARAM_NAME = os.environ["PARAM_NAME"]
+
+          ssm_client = boto3.client("ssm")
+
+          def lambda_handler(event, context):
+              response = ssm_client.put_parameter(
+                  Name=PARAM_NAME,
+                  Value=dt.now().isoformat(),
+                  Overwrite=True
+              )
+
+              return response
+
+      Handler: index.lambda_handler
+      Role: !GetAtt 'StartEventLambdaRole.Arn'
+      Runtime: python3.10
+      Environment:
+        Variables:
+          PARAM_NAME: !Ref 'EventStartTimeParameter'
+      TracingConfig:
+        Mode: Active
+      Architectures:
+        - arm64
+
+  StartEventLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+        - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
+      Policies:
+        - PolicyName: StartEventLambdaRolePolicy0
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ssm:PutParameter
+                  - ssm:GetParameter
+                Resource: !Sub 'arn:${AWS::Partition}:ssm:${AWS::Region}:${AWS::AccountId}:parameter/${EventStartTimeParameter}'
+
+  XRayLayer40fc5eb8f3:
+    Type: AWS::Lambda::LayerVersion
+    DeletionPolicy: Retain
+    Properties:
+      Content:
+        S3Bucket: !Ref 'None'
+        S3Key: !Sub '214612b2-513d-427e-9638-67d348d6d121/cfn/4096067a82ee490eb449921f654820f2'
+      LayerName: XRayLayer
+      CompatibleRuntimes:
+        - python3.10
+
+  ScannedAttendeeTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  WriteStreamBadgeScansLambdaWriteDDBConnPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Metadata:
+      aws:sam:connectors:
+        WriteStreamBadgeScansLambdaWriteDDBConn:
+          Source:
+            Type: AWS::Serverless::Function
+          Destination:
+            Type: AWS::Serverless::SimpleTable
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:BatchGetItem
+              - dynamodb:ConditionCheckItem
+              - dynamodb:PartiQLSelect
+            Resource:
+              - !GetAtt 'ScannedAttendeeTable.Arn'
+              - !Sub
+                - ${DestinationArn}/index/*
+                - DestinationArn: !GetAtt 'ScannedAttendeeTable.Arn'
+          - Effect: Allow
+            Action:
+              - dynamodb:PutItem
+              - dynamodb:UpdateItem
+              - dynamodb:DeleteItem
+              - dynamodb:BatchWriteItem
+              - dynamodb:PartiQLDelete
+              - dynamodb:PartiQLInsert
+              - dynamodb:PartiQLUpdate
+            Resource:
+              - !GetAtt 'ScannedAttendeeTable.Arn'
+              - !Sub
+                - ${DestinationArn}/index/*
+                - DestinationArn: !GetAtt 'ScannedAttendeeTable.Arn'
+      Roles:
+        - !Ref 'WriteStreamBadgeScansLambdaRole'
+
+  WriteSocialPostsLambdaReadDDBConnPolicyDestination0:
+    Type: AWS::IAM::ManagedPolicy
+    Metadata:
+      aws:sam:connectors:
+        WriteSocialPostsLambdaReadDDBConn:
+          Source:
+            Type: AWS::Serverless::Function
+          Destination:
+            Type: AWS::DynamoDB::Table
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:BatchGetItem
+              - dynamodb:ConditionCheckItem
+              - dynamodb:PartiQLSelect
+            Resource:
+              - !GetAtt 'SocialPostTable.Arn'
+              - !Sub
+                - ${DestinationArn}/index/*
+                - DestinationArn: !GetAtt 'SocialPostTable.Arn'
+      Roles:
+        - !Ref 'WriteSocialPostsLambdaRole'
+
+  WriteSocialPostsLambdaReadDDBConnPolicyDestination1:
+    Type: AWS::IAM::ManagedPolicy
+    Metadata:
+      aws:sam:connectors:
+        WriteSocialPostsLambdaReadDDBConn:
+          Source:
+            Type: AWS::Serverless::Function
+          Destination:
+            Type: AWS::Serverless::SimpleTable
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:GetItem
+              - dynamodb:Query
+              - dynamodb:Scan
+              - dynamodb:BatchGetItem
+              - dynamodb:ConditionCheckItem
+              - dynamodb:PartiQLSelect
+            Resource:
+              - !GetAtt 'ScannedAttendeeTable.Arn'
+              - !Sub
+                - ${DestinationArn}/index/*
+                - DestinationArn: !GetAtt 'ScannedAttendeeTable.Arn'
+      Roles:
+        - !Ref 'WriteSocialPostsLambdaRole'
+
+Outputs:
+  StaticDataBucketExport:
+    Value: !Sub '${StaticDataBucket}'
+    Export:
+      Name: !Sub '${ExportPrefix}-StaticDataBucket'
+
+  StaticDataBucketArnExport:
+    Value: !Sub '${StaticDataBucket.Arn}'
+    Export:
+      Name: !Sub '${ExportPrefix}-StaticDataBucketArn'
+
+  BadgeScanStreamArnExport:
+    Value: !Sub '${BadgeScanStream.Arn}'
+    Export:
+      Name: !Sub '${ExportPrefix}-BadgeScanStreamArn'
+
+  SocialPostsStreamArnExport:
+    Value: !Sub '${SocialPostsStream.Arn}'
+    Export:
+      Name: !Sub '${ExportPrefix}-SocialPostsStreamArn'
+
+  XRayLayerArnExport:
+    Value: !Ref 'XRayLayer40fc5eb8f3'
+    Export:
+      Name: !Sub '${ExportPrefix}-XRayLayerArn'

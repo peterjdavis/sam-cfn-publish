@@ -23,7 +23,7 @@ def process_lambda(cfn, key, value, target_assets_bucket, target_prefix, target_
             value['Properties']['Code']['S3Bucket'] = {
                 'Ref': target_assets_bucket}
             value['Properties']['Code']['S3Key'] = {
-                'Fn::Sub': f'{target_prefix}/{lambda_path}/{source_key}'.strip('/')}
+                'Fn::Sub': f'{target_prefix}/{lambda_path}/{filename}'.replace('//', '/').strip('/')}
         else:
             LOG.info('Code is marked for inlining InlineSAMFunction Metadata: %s', value["Metadata"]['InlineSAMFunction'])
     else:
@@ -43,7 +43,7 @@ def process_layer(cfn, key, value, target_assets_bucket, target_prefix, target_a
     value['Properties']['Content']['S3Bucket'] = {
         'Ref': target_assets_bucket}
     value['Properties']['Content']['S3Key'] = {
-        'Fn::Sub': f'{target_prefix}/{layer_path}/{source_key}'.strip('/')}
+        'Fn::Sub': f'{target_prefix}/{layer_path}/{filename}'.replace('//', '/').strip('/')}
 
 def process_statemachine(cfn, key, value, target_assets_bucket, target_prefix, target_asset_folder, statemachine_path, s3_client):
     print('Processing Satemachine: %s', key)
@@ -59,7 +59,7 @@ def process_statemachine(cfn, key, value, target_assets_bucket, target_prefix, t
     value['Properties']['DefinitionS3Location']['Bucket'] = {
         'Ref': target_assets_bucket}
     value['Properties']['DefinitionS3Location']['Key'] = {
-        'Fn::Sub': f'{target_prefix}/{statemachine_path}/{source_key}'.strip('/')}
+        'Fn::Sub': f'{target_prefix}/{statemachine_path}/{filename}'.replace('//', '/').strip('/')}
 
 def move_assets(cfn_input_template, cfn_output_template, target_assets_bucket, target_prefix, target_asset_folder, lambda_path, layer_path, statemachine_path, s3_client):
     with open(cfn_input_template) as f:
