@@ -26,9 +26,8 @@ deploy-test : build
 deploy-live : deploy
 	python3 -m twine upload dist/*
 
-.PHONY : test
-test : build
-# test :
+.PHONY : package-template
+package-template : build
 	source .venv/bin/activate
 	pip3 install --force-reinstall dist/sam_cfn_publish-0.2.3-py3-none-any.whl 
 	# pip3 install dist/sam_cfn_publish-0.2.3-py3-none-any.whl 
@@ -54,6 +53,8 @@ test : build
 
 	rm -rf samples/assets
 
+.PHONY : test-cfn
+test-cfn : package-template
 	sam-cfn-publish \
 		--working-folder ${tmpCFNDir} \
     	--cfn-input-template ${tmpCFNDir}/cfn1-template.tmp.yaml \
@@ -66,7 +67,7 @@ test : build
 	# rm -rf ${tmpCFNDir}
 
 .PHONY : deploy-cfn
-deploy-cfn : test
+deploy-cfn : test-cfn
 	$(eval awsAccount := $(shell aws sts get-caller-identity --query Account --output text))
 
 	$(eval assetBucket := cfn-${awsAccount}-${awsRegion})
@@ -79,5 +80,41 @@ deploy-cfn : test
 	aws s3 sync samples/assets/cfn s3://${assetBucket} --delete
 
 	aws cloudformation deploy --stack-name sam-cfn-publish-sample --template-file samples/cfn-template.yaml \
+	 	--parameter-overrides AssetBucket=${assetBucket} \
+		--capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
+
+.PHONY : test-sam
+test-sam : package-template
+
+	@echo Working folder ${tmpCFNDir}
+
+	sam-cfn-publish \
+		--working-folder ${tmpCFNDir} \
+		--input-format SAM \
+        --output-format SAM \
+    	--cfn-input-template ${tmpCFNDir}/cfn1-template.tmp.yaml \
+    	--cfn-output-template samples/cfn-template.yaml \
+    	--target-asset-folder samples/assets/cfn \
+		--target-asset-bucket AssetBucket \
+		--move-assets \
+		--verbose
+
+	# rm -rf ${tmpCFNDir}
+
+.PHONY : deploy-sam
+# deploy-sam : test-sam
+deploy-sam :
+	$(eval awsAccount := $(shell aws sts get-caller-identity --query Account --output text))
+
+	$(eval assetBucket := cfn-${awsAccount}-${awsRegion})
+	if aws s3api head-bucket --bucket ${assetBucket} 2>/dev/null; \
+		then echo Bucket ${assetBucket} exists; \
+		else echo Creating bucket ${assetBucket} && \
+			aws s3 mb s3://${assetBucket} --region ${awsRegion} ; \
+		fi
+
+	aws s3 sync samples/assets/cfn s3://${assetBucket} --delete
+
+	sam deploy --stack-name sam-sam-publish-sample --template-file samples/cfn-template.yaml \
 	 	--parameter-overrides AssetBucket=${assetBucket} \
 		--capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND
