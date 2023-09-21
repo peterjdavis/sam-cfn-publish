@@ -29,8 +29,8 @@ deploy-live : build
 .PHONY : package-template
 package-template : build
 	source .venv/bin/activate
-	pip3 install --force-reinstall dist/sam_cfn_publish-0.2.3-py3-none-any.whl 
-	# pip3 install dist/sam_cfn_publish-0.2.3-py3-none-any.whl 
+	pip3 install --force-reinstall dist/sam_cfn_publish-0.2.4-py3-none-any.whl 
+	# pip3 install dist/sam_cfn_publish-0.2.4-py3-none-any.whl 
 	sam build -t samples/sam-template.yaml
 	$(eval awsAccount := $(shell aws sts get-caller-identity --query Account --output text))
 	# $(eval tmpCFNDir := $(shell mktemp -d))
