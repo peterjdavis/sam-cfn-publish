@@ -6,9 +6,13 @@ Much of this can be achieved by using commands such as `sam package` to package 
 * Control of the buckets where the assets are stored e.g. [AWS Step Functions](https://aws.amazon.com/step-functions/) and [Lambda Layers](https://docs.aws.amazon.com/lambda/latest/dg/configuration-layers.html).  The can be useful if you would like to deploy the assets to a separate AWS account which may have publicly accessible buckets available specifically for sharing assets with users.
 * Removes the metadata and tags that are added to resources when converted using [aws-sam-translator](https://pypi.org/project/aws-sam-translator/)
 
-# Command Line Arguments
+# Unsupported Resoruce Types
+* AWS::Serverless::GraphQLApi
 
-  `--working-folder WORKING_FOLDER` - Working folder for the input and output files.  Normally a local temp folder.
+# Command Line Arguments
+  `--output-format` - Create the output as an untransformed SAM Template, useful for moving assets and inlining functions (experimental)
+
+  `--working-folder WORKING_FOLDER` - Working folder for the input and output files.  Normally a local temp folder. (optional)
   
   `--cfn-input-template CFN_INPUT_TEMPLATE` - Name of JSON template to transform [default: template.json].  Normally the output from `sam package` command
    
@@ -37,7 +41,6 @@ Much of this can be achieved by using commands such as `sam package` to package 
   `--verbose` - Enables verbose logging [Default: True]
 
 # Inlining Lambda Functions
-
 To inline a Lambda function you should include a metadata element `InlineSAMFunction: true` in the AWS::Serverless::Function resource as shown below
 
 ```YAML
@@ -45,8 +48,6 @@ To inline a Lambda function you should include a metadata element `InlineSAMFunc
     Type: AWS::Serverless::Function
     Metadata:
       InlineSAMFunction: true
-      LeaveMetadata: This should stay
-      LeaveMetadata2: This should stay
     Properties:
       CodeUri: src/lambda/testFunction
       Handler: index.lambda_handler
@@ -57,7 +58,6 @@ To inline a Lambda function you should include a metadata element `InlineSAMFunc
 When processed by sam-cfn-publish the associated code will be included in the output CloudFormation template.  If the Lambda function relies on non standard packages these should be included in a Layer and referenced from the resource or the resource left as a reference in S3.
 
 # Example uses
-
 Assuming that you have a SAM Template in the current folder e.g. https://github.com/peterjdavis/sam-cfn-publish/blob/main/samples/sam-template.yaml then the following commands could be used to transform this to the CloudFormation template shown at https://github.com/peterjdavis/sam-cfn-publish/blob/main/samples/cfn-template.yaml
 ```bash
 #!/bin/bash
@@ -89,7 +89,7 @@ sam package -t sam-template.yaml \
             --output-template-file ${tmpCFNDir}/sam-template.tmp.yaml \
             --s3-bucket sam-${AWSAccount}-${AWSRegion} 
 
-# Update the CloudFormation tempalte so lambda's with an InlineSAMFunction: true metadata tag are inlined
+# Update the CloudFormation template so lambda's with an InlineSAMFunction: true metadata tag are inlined
 # assets are referenced from a parameter call AssetBucket and the layer and lambda are referenced from a default prefix
 sam-cfn-publish \
     --working-folder ${tmpCFNDir} \

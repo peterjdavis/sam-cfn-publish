@@ -1,4 +1,5 @@
 # To Do
+- Look at how can leave a serverless application with the transform untouched as won't have access to the application
 - Look at the parameter handling function
   - Done but need to test
 - Write a blog post

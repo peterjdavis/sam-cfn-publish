@@ -1,5 +1,6 @@
 import os
 from os.path import basename
+import tempfile
 import shutil
 import logging
 
@@ -34,6 +35,9 @@ def resolve_element(cfn, element):
 def get_filename_from_path(path):
     return basename(path)
 
+def get_extension_from_path(path):
+    return path.split('.')[-1]
+
 def check_create_folder(path):
     if not os.path.exists(path):
         os.makedirs(path) 
@@ -61,6 +65,21 @@ def get_code(source_bucket, source_key, spaces, working_folder, s3_client):
 
     return get_lambda_source(local_zip_file, 'index.lambda_handler', spaces, working_folder)
 
+def get_bucket_from_code_uri(code_uri):
+    bucket = code_uri.split('/')[2]
+    return bucket
+
+def get_key_from_code_uri(code_uri):
+    key_parts = code_uri.split('/')
+
+    key = ''
+    for i in range(3, len(key_parts)):
+        if key == '':
+            key = key_parts[i]
+        else:
+            key = key + '/' + key_parts[i]
+    return key
+ 
 def count_spaces(line):
     spaces = 0
     for character in line:
@@ -86,3 +105,9 @@ def convert_to_yaml(cfn_input_template, cfn_output_template):
         str_cfn = f.read()
         cfn = load_json(str_cfn)
         write_yaml_file(cfn, cfn_output_template)
+
+def get_temp_folder():
+    """Create a temporary folder for the working files"""    
+    temp_path = tempfile.mkdtemp()
+    return temp_path
+    

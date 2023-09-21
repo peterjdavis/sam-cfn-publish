@@ -1,83 +1,122 @@
 AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
 Parameters:
   AssetBucket:
     Type: String
 
-Resources:
-  SampleFunction:
-    Type: AWS::Lambda::Function
-    Properties:
-      Code:
-        S3Bucket: !Ref 'AssetBucket'
-        S3Key: !Sub 'lambda/e68bece52ae539a0c386ef019700ec05'
-      Handler: index.lambda_handler
-      Role: !GetAtt 'SampleFunctionRole.Arn'
-      Runtime: python3.9
-      Tags:
-        - Key: LeaveTag
-          Value: This should stay
-      Layers:
-        - !Ref 'SampleLayerccb8464607'
+  APIStageName:
+    Type: String
+    Default: Test
 
-  SampleFunctionRole:
-    Type: AWS::IAM::Role
+Resources:
+  SampleApi:
+    Type: AWS::Serverless::Api
     Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Action:
-              - sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Name: !Sub '${AWS::StackName}-SampleAPI'
+      StageName: !Ref 'APIStageName'
+      TracingEnabled: true
+      Auth:
+        DefaultAuthorizer: AWS_IAM
+        InvokeRole: NONE
+      MethodSettings:
+        - HttpMethod: '*'
+          LoggingLevel: INFO
+          ResourcePath: /*
+          MetricsEnabled: true
+          DataTraceEnabled: true
+      AccessLogSetting:
+        DestinationArn: !Sub '${SampleApiLogGroup.Arn}'
+        Format: '{ ''requestId'':''$context.requestId'', ''ip'': ''$context.identity.sourceIp'', ''caller'':''$context.identity.caller'', ''user'':''$context.identity.user'',''requestTime'':''$context.requestTime'',
+          ''xrayTraceId'':''$context.xrayTraceId'', ''wafResponseCode'':''$context.wafResponseCode'', ''httpMethod'':''$context.httpMethod'',''resourcePath'':''$context.resourcePath'', ''status'':''$context.status'',''protocol'':''$context.protocol'',
+          ''responseLength'':''$context.responseLength'' }'
+
+  SampleApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: SampleApi
+    DeletionPolicy: Delete
+    Properties:
+      LogGroupName: !Sub '/aws/apigateway/${SampleApi}'
+      RetentionInDays: 1
+
+  SampleAthenaSpillBucket:
+    Type: AWS::S3::Bucket
+
+  SampleConnector:
+    Type: AWS::Serverless::Connector
+    Properties:
+      Source:
+        Id: SampleInlineFunction
+      Destination:
+        Id: SampleTable
+      Permissions:
+        - Read
+
+  SampleFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: index.lambda_handler
+      Runtime: python3.10
+      Architectures:
+        - arm64
+      Layers:
+        - !Ref 'SampleLayer'
+      Events:
+        ApiEvents:
+          Type: Api
+          Properties:
+            Path: /
+            Method: get
+            RestApiId: !Ref 'SampleApi'
       Tags:
-        - Key: LeaveTag
-          Value: This should stay
+        LeaveTag: This should stay
+      CodeUri:
+        Bucket: !Ref 'AssetBucket'
+        Key: !Sub 'b2de06efb355ff47d2a3bf88480b2d03'
+    Connectors:
+      MyDDBConnector:
+        Properties:
+          Destination:
+            Id: SampleTable
+          Permissions:
+            - Read
+            - Write
 
   SampleInlineFunction:
-    Type: AWS::Lambda::Function
+    Type: AWS::Serverless::Function
     Metadata:
       LeaveMetadata: This should stay
       LeaveMetadata2: This should stay
     Properties:
-      Code:
-        ZipFile: |
-          def lambda_handler(event, context):
-              print(event)
+      InlineCode: |
+        import json
 
-              return 'dummy'
+        def lambda_handler(event, context):
+            print('REQUEST RECEIVED:\n' + json.dumps(event))
+
+            return {"statusCode": 200,
+                    "body": "SAM Rocks!"}
+
 
       Handler: index.lambda_handler
-      Role: !GetAtt 'SampleInlineFunctionRole.Arn'
-      Runtime: python3.9
+      Runtime: python3.10
+      Architectures:
+        - arm64
       Layers:
-        - !Ref 'SampleLayerccb8464607'
+        - !Ref 'SampleLayer'
 
-  SampleInlineFunctionRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: '2012-10-17'
-        Statement:
-          - Action:
-              - sts:AssumeRole
-            Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-
-  SampleLayerccb8464607:
-    Type: AWS::Lambda::LayerVersion
+  SampleLayer:
+    Type: AWS::Serverless::LayerVersion
     DeletionPolicy: Delete
     Properties:
-      Content:
-        S3Bucket: !Ref 'AssetBucket'
-        S3Key: !Sub 'layer/81a135cc28f797dfb00c07dc70670789'
       LayerName: SampleLayer
+      ContentUri: s3://sam-773427694428-eu-west-1/81a135cc28f797dfb00c07dc70670789
       CompatibleRuntimes:
-        - python3.9
+        - python3.10
+    Metadata:
+      BuildMethod: python3.10
+
+  SampleTable:
+    Type: AWS::Serverless::SimpleTable
+    DeletionPolicy: Delete
+    Properties:
+      TableName: !Sub '${AWS::StackName}-SampleTable'

@@ -1,6 +1,6 @@
 import logging
 import cfn_flip
-from .helpers import write_json_file, count_spaces
+from . import helpers
 
 LOG = logging.getLogger(__name__)
 LEVEL_0_SPACES = 0 
@@ -14,16 +14,20 @@ def tidy_tags(cfn_input_template, cfn_output_template, working_folder):
 
     for key, value in resources.items():
         LOG.info('Tidying tags in %s', key)
-        if "Tags" in value["Properties"]:
-            tags = value["Properties"]["Tags"]
-            i = 0
-            for tag in tags:
-                if tag['Key'] == 'lambda:createdBy' and tag['Value'] == 'SAM':
-                    del value["Properties"]["Tags"][i]
-                    i = i + 1
-            if value["Properties"]["Tags"] == []:
-                del value["Properties"]["Tags"]
-    write_json_file(cfn, cfn_output_template)
+        if "Properties" in value:
+            if "Tags" in value["Properties"]:
+                tags = value["Properties"]["Tags"]
+                i = 0
+                for tag in tags:
+                    if 'Key' in tag and tag['Key'] == 'lambda:createdBy' and tag['Value'] == 'SAM':
+                        del value["Properties"]["Tags"][i]
+                        i = i + 1
+                    if 'httpapi:createdBy' in tag and tag['httpapi:createdBy'] == 'SAM':
+                        del value["Properties"]["Tags"][i]
+                        i = i + 1
+                if value["Properties"]["Tags"] == []:
+                    del value["Properties"]["Tags"]
+    helpers.write_json_file(cfn, cfn_output_template)
 
 def tidy_metadata(cfn_input_template, cfn_output_template, add_layout_gaps):
     """Process the Yaml document to remove SAM metadata"""
@@ -34,7 +38,7 @@ def tidy_metadata(cfn_input_template, cfn_output_template, add_layout_gaps):
 
             for line in rf:
                 if line.strip() != '':
-                    line_spaces = count_spaces(line)
+                    line_spaces = helpers.count_spaces(line)
                     if line_spaces == LEVEL_0_SPACES:
                         level_0_element = line.strip()
                         if add_layout_gaps and current_level != 0:
