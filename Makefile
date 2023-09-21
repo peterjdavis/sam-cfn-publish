@@ -90,7 +90,6 @@ test-sam : package-template
 
 	sam-cfn-publish \
 		--working-folder ${tmpCFNDir} \
-		--input-format SAM \
         --output-format SAM \
     	--cfn-input-template ${tmpCFNDir}/cfn1-template.tmp.yaml \
     	--cfn-output-template samples/cfn-template.yaml \
@@ -102,8 +101,8 @@ test-sam : package-template
 	# rm -rf ${tmpCFNDir}
 
 .PHONY : deploy-sam
-# deploy-sam : test-sam
-deploy-sam :
+deploy-sam : test-sam
+# deploy-sam :
 	$(eval awsAccount := $(shell aws sts get-caller-identity --query Account --output text))
 
 	$(eval assetBucket := cfn-${awsAccount}-${awsRegion})

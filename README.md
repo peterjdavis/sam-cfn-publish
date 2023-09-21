@@ -10,7 +10,9 @@ Much of this can be achieved by using commands such as `sam package` to package 
 * AWS::Serverless::GraphQLApi
 
 # Command Line Arguments
-  `--working-folder WORKING_FOLDER` - Working folder for the input and output files.  Normally a local temp folder.
+  `--output-format` - Create the output as an untransformed SAM Template, useful for moving assets and inlining functions (experimental)
+
+  `--working-folder WORKING_FOLDER` - Working folder for the input and output files.  Normally a local temp folder. (optional)
   
   `--cfn-input-template CFN_INPUT_TEMPLATE` - Name of JSON template to transform [default: template.json].  Normally the output from `sam package` command
    
