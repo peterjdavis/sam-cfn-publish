@@ -23,7 +23,7 @@ deploy-test : build
 	python3 -m twine upload --skip-existing --repository testpypi dist/*
 
 .PHONY : deploy-live
-deploy-live : deploy
+deploy-live : build
 	python3 -m twine upload dist/*
 
 .PHONY : package-template
